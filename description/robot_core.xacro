@@ -22,6 +22,9 @@
     <material name="silver">
         <color rgba="0.75 0.75 0.75 1"/>
     </material>
+    <material name="red">
+        <color rgba="1 0 0 1"/>
+    </material>
 
     <!-- Base Link -->
 
@@ -163,8 +166,8 @@
 
     <!-- Caster: Silver with low friction -->
     <gazebo reference="caster_wheel">
-        <mu1 value="0.001"/>
-        <mu2 value="0.001"/>
+        <mu1>0.001</mu1>
+        <mu2>0.001</mu2>
         <material>
             <ambient>0.75 0.75 0.75 1</ambient>
             <diffuse>0.75 0.75 0.75 1</diffuse>
