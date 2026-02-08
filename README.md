@@ -86,4 +86,4 @@ ros2 launch my_bot rplidar.launch.py serial_port:=/dev/ttyUSB0
 
 ## License
 
-Apache License 2.0
+MIT License — see [LICENSE.md](LICENSE.md)
