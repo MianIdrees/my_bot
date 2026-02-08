@@ -3,18 +3,24 @@
 
     <xacro:include filename="inertial_macros.xacro" />  
 
-    <!-- ==================== MATERIALS ==================== -->
+    <!-- ==================== MATERIALS (RViz colors) ==================== -->
     <material name="white">
         <color rgba="1 1 1 1"/>
     </material>
     <material name="orange">
-        <color rgba="1 0.5 0 1"/>
+        <color rgba="1 0.3 0 1"/>
     </material>
     <material name="blue">
-        <color rgba="0 0 1 1"/>
+        <color rgba="0.1 0.1 0.8 1"/>
     </material>
     <material name="black">
-        <color rgba="0 0 0 1"/>
+        <color rgba="0.05 0.05 0.05 1"/>
+    </material>
+    <material name="dark_grey">
+        <color rgba="0.2 0.2 0.2 1"/>
+    </material>
+    <material name="silver">
+        <color rgba="0.75 0.75 0.75 1"/>
     </material>
 
     <!-- Base Link -->
@@ -37,7 +43,7 @@
             <geometry>
                 <box size="0.3 0.3 0.15"/>
             </geometry>
-            <material name="white"/>
+            <material name="orange"/>
         </visual>
         <collision>
             <origin xyz="0.15 0 0.075" rpy="0 0 0"/>
@@ -63,7 +69,7 @@
             <geometry>
                 <cylinder radius="0.05" length="0.04"/>
             </geometry>
-            <material name="blue"/>
+            <material name="dark_grey"/>
         </visual>
         <collision>
             <origin xyz="0 0 0" rpy="0 0 0"/>
@@ -89,7 +95,7 @@
             <geometry>
                 <cylinder radius="0.05" length="0.04"/>
             </geometry>
-            <material name="blue"/>
+            <material name="dark_grey"/>
         </visual>
         <collision>
             <origin xyz="0 0 0" rpy="0 0 0"/>
@@ -114,7 +120,7 @@
             <geometry>
                 <sphere radius="0.05"/>
             </geometry>
-            <material name="black"/>
+            <material name="silver"/>
         </visual>
         <collision>
             <geometry>
@@ -126,4 +132,44 @@
         </xacro:inertial_sphere>
     </link>
 
-    </robot>
+    <!-- ==================== GAZEBO COLORS ==================== -->
+    <!-- Gazebo Harmonic uses these tags to apply colors in simulation -->
+
+    <!-- Chassis: Orange -->
+    <gazebo reference="chassis">
+        <material>
+            <ambient>1.0 0.3 0.0 1</ambient>
+            <diffuse>1.0 0.3 0.0 1</diffuse>
+            <specular>0.6 0.6 0.6 1</specular>
+        </material>
+    </gazebo>
+
+    <!-- Wheels: Dark Grey -->
+    <gazebo reference="left_wheel">
+        <material>
+            <ambient>0.2 0.2 0.2 1</ambient>
+            <diffuse>0.2 0.2 0.2 1</diffuse>
+            <specular>0.3 0.3 0.3 1</specular>
+        </material>
+    </gazebo>
+
+    <gazebo reference="right_wheel">
+        <material>
+            <ambient>0.2 0.2 0.2 1</ambient>
+            <diffuse>0.2 0.2 0.2 1</diffuse>
+            <specular>0.3 0.3 0.3 1</specular>
+        </material>
+    </gazebo>
+
+    <!-- Caster: Silver with low friction -->
+    <gazebo reference="caster_wheel">
+        <mu1 value="0.001"/>
+        <mu2 value="0.001"/>
+        <material>
+            <ambient>0.75 0.75 0.75 1</ambient>
+            <diffuse>0.75 0.75 0.75 1</diffuse>
+            <specular>0.8 0.8 0.8 1</specular>
+        </material>
+    </gazebo>
+
+</robot>
