@@ -3,7 +3,7 @@ import os
 from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument, TimerAction, ExecuteProcess, RegisterEventHandler
+from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument, TimerAction, ExecuteProcess, RegisterEventHandler, SetEnvironmentVariable
 from launch.event_handlers import OnProcessExit
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
@@ -15,6 +15,24 @@ def generate_launch_description():
     # Include the robot_state_publisher launch file
     package_name = 'my_bot'
     pkg_path = get_package_share_directory(package_name)
+
+    # ---------- Gazebo plugin paths ----------
+    # gz_ros2_control-system lives in /opt/ros/jazzy/lib but Gazebo Harmonic
+    # only searches GZ_SIM_SYSTEM_PLUGIN_PATH for system plugins.
+    gz_plugin_path = SetEnvironmentVariable(
+        'GZ_SIM_SYSTEM_PLUGIN_PATH',
+        os.pathsep.join(filter(None, [
+            '/opt/ros/jazzy/lib',
+            os.environ.get('GZ_SIM_SYSTEM_PLUGIN_PATH', ''),
+        ])),
+    )
+
+    # Work around snap/core20 libpthread conflict on Ubuntu 24.04
+    # (snap ships glibc 2.31 libpthread which clashes with system glibc 2.39)
+    fix_snap_libpthread = SetEnvironmentVariable(
+        'LD_PRELOAD',
+        '/usr/lib/x86_64-linux-gnu/libpthread.so.0',
+    )
 
     rsp = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -82,13 +100,14 @@ def generate_launch_description():
     )
 
     # Chain: after spawn completes → start joint_broad → then start diff_cont
+    # (generous delays for Gazebo Harmonic to fully load gz_ros2_control plugin)
     delayed_joint_broad = TimerAction(
-        period=7.0,
+        period=12.0,
         actions=[joint_broad_spawner],
     )
 
     delayed_diff_cont = TimerAction(
-        period=9.0,
+        period=15.0,
         actions=[diff_cont_spawner],
     )
 
@@ -107,17 +126,21 @@ def generate_launch_description():
         output='screen'
     )
 
-    # RViz2 with sim time enabled
+    # RViz2 with Nav2 config (Fixed Frame = "map", includes map + costmap + path displays)
+    rviz_config = os.path.join(pkg_path, 'config', 'nav2_view.rviz')
     rviz = Node(
         package='rviz2',
         executable='rviz2',
         name='rviz2',
         output='screen',
+        arguments=['-d', rviz_config],
         parameters=[{'use_sim_time': True}]
     )
 
     # Launch!
     return LaunchDescription([
+        gz_plugin_path,
+        fix_snap_libpthread,
         rsp,
         gazebo,
         bridge,

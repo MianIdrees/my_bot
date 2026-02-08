@@ -1,6 +1,6 @@
 controller_manager:
   ros__parameters:
-    update_rate: 200
+    update_rate: 100
     use_sim_time: true
 
     diff_cont:
@@ -12,7 +12,7 @@ controller_manager:
 
 diff_cont:
   ros__parameters:
-    publish_rate: 50.0
+    publish_rate: 30.0
 
     base_frame_id: base_link
     odom_frame_id: odom
@@ -41,14 +41,14 @@ diff_cont:
     # Velocity & acceleration limits matching your robot
     linear.x.has_velocity_limits: true
     linear.x.has_acceleration_limits: true
-    linear.x.max_velocity: 0.5
-    linear.x.min_velocity: -0.5
-    linear.x.max_acceleration: 1.0
-    linear.x.min_acceleration: -1.0
+    linear.x.max_velocity: 2.0
+    linear.x.min_velocity: -2.0
+    linear.x.max_acceleration: 3.5
+    linear.x.min_acceleration: -3.5
 
     angular.z.has_velocity_limits: true
     angular.z.has_acceleration_limits: true
-    angular.z.max_velocity: 1.0
-    angular.z.min_velocity: -1.0
-    angular.z.max_acceleration: 2.0
-    angular.z.min_acceleration: -2.0
+    angular.z.max_velocity: 3.5
+    angular.z.min_velocity: -3.5
+    angular.z.max_acceleration: 5.0
+    angular.z.min_acceleration: -5.0
