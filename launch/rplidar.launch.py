@@ -15,8 +15,8 @@ def generate_launch_description():
 
     serial_baudrate_arg = DeclareLaunchArgument(
         'serial_baudrate',
-        default_value='115200',
-        description='Baud rate for the RPLidar serial connection'
+        default_value='460800',
+        description='Baud rate for the RPLidar C1 (460800 for C1, 256000 for A3/S1, 115200 for A1/A2)'
     )
 
     frame_id_arg = DeclareLaunchArgument(
@@ -28,30 +28,32 @@ def generate_launch_description():
     scan_mode_arg = DeclareLaunchArgument(
         'scan_mode',
         default_value='Standard',
-        description='Scan mode of the RPLidar (Standard, Express, Boost, etc.)'
+        description='Scan mode of the RPLidar (Standard, Express, Boost, Sensitivity)'
     )
 
     topic_name_arg = DeclareLaunchArgument(
         'topic_name',
-        default_value='scan',
+        default_value='/scan',
         description='Topic name for the LaserScan output'
     )
 
-    # RPLidar node
+    # RPLidar C1 node (using sllidar_ros2 – official Slamtec driver with C1 support)
     rplidar_node = Node(
-        package='rplidar_ros',
-        executable='rplidar_composition',
-        name='rplidar_node',
+        package='sllidar_ros2',
+        executable='sllidar_node',
+        name='sllidar_node',
         output='screen',
         parameters=[{
+            'channel_type': 'serial',
             'serial_port': LaunchConfiguration('serial_port'),
             'serial_baudrate': LaunchConfiguration('serial_baudrate'),
             'frame_id': LaunchConfiguration('frame_id'),
+            'inverted': False,
             'angle_compensate': True,
             'scan_mode': LaunchConfiguration('scan_mode'),
         }],
         remappings=[
-            ('scan', LaunchConfiguration('topic_name')),
+            ('/scan', LaunchConfiguration('topic_name')),
         ],
     )
 
