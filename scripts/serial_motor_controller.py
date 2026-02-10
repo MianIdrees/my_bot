@@ -25,6 +25,9 @@ class SerialMotorController(Node):
         super().__init__('serial_motor_controller')
         
         # Declare parameters
+        # Note: Device name depends on USB-to-serial chip:
+        # - /dev/ttyACM0 for ATmega32u4-based boards or native USB
+        # - /dev/ttyUSB0 for CH340/CP2102 USB-to-serial chips (common on cheap Nano clones)
         self.declare_parameter('serial_port', '/dev/ttyACM0')
         self.declare_parameter('baud_rate', 115200)
         self.declare_parameter('timeout', 1.0)

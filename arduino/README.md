@@ -45,11 +45,16 @@ Encoder               Arduino Nano
 ═══════               ════════════
 Left Encoder A  →     Pin 2 (INT0)
 Left Encoder B  →     Pin 9
-Right Encoder A →     Pin 3 (INT1)
+Right Encoder A →     Pin 12 (digital pin - polling or pin change interrupt)
 Right Encoder B →     Pin 10
 Encoder VCC     →     5V
 Encoder GND     →     GND
 ```
+
+**Note about encoder pins:** Arduino Nano only has 2 hardware interrupt pins (D2, D3). Since D3 is used for motor PWM control, the right encoder uses D12 with polling or pin change interrupts. For best performance with encoders:
+- Option 1: Use only left encoder (current config)
+- Option 2: Move motor PWM to different pins and use D2/D3 for both encoders
+- Option 3: Use pin change interrupt library for any pin
 
 ## Software Installation
 

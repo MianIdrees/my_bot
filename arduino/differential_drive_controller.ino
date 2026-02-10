@@ -15,10 +15,16 @@
 
 // ============================================================================
 // ENCODER PINS (Optional - for odometry feedback)
+// NOTE: Arduino Nano only has 2 interrupt pins (D2, D3)
+// Current pin assignment uses D3 for motor PWM, which conflicts with encoders
+// Options:
+// 1. Use encoder library with pin change interrupts (any pin)
+// 2. Move motor to different pin and use D2/D3 for encoders
+// 3. Read encoders via polling (less accurate)
 // ============================================================================
-#define LEFT_ENC_A 2   // Interrupt pin (INT0)
+#define LEFT_ENC_A 2   // Interrupt pin (INT0) - OK
 #define LEFT_ENC_B 9
-#define RIGHT_ENC_A 3  // Interrupt pin (INT1)
+#define RIGHT_ENC_A 12  // Changed from D3 to D12 (polling or pin change interrupt)
 #define RIGHT_ENC_B 10
 
 // ============================================================================
@@ -28,6 +34,11 @@ const float WHEEL_SEPARATION = 0.35;  // meters (distance between wheels)
 const float WHEEL_RADIUS = 0.05;      // meters
 const float MAX_LINEAR_VEL = 0.5;     // m/s (from your robot specs)
 const float MAX_ANGULAR_VEL = 1.0;    // rad/s
+
+// ============================================================================
+// CONTROL PARAMETERS
+// ============================================================================
+const float VELOCITY_DEADZONE = 0.01;  // m/s - ignore velocities below this threshold
 
 // ============================================================================
 // SAFETY PARAMETERS
@@ -76,8 +87,10 @@ void setup() {
   pinMode(RIGHT_ENC_B, INPUT_PULLUP);
   
   // Attach interrupt handlers for encoders
+  // NOTE: Only using LEFT encoder on INT0 due to D3 pin conflict with motor PWM
+  // For RIGHT encoder, use polling or pin change interrupt library
   attachInterrupt(digitalPinToInterrupt(LEFT_ENC_A), leftEncoderISR, RISING);
-  attachInterrupt(digitalPinToInterrupt(RIGHT_ENC_A), rightEncoderISR, RISING);
+  // attachInterrupt(digitalPinToInterrupt(RIGHT_ENC_A), rightEncoderISR, RISING);  // Commented - D3 conflict
   
   // Startup message
   Serial.println("Arduino Differential Drive Controller Ready");
@@ -174,11 +187,11 @@ void driveMotors(float linear, float angular) {
   int rightPWM = constrain(abs(rightVel) * 255.0 / MAX_LINEAR_VEL, 0, 255);
   
   // Control LEFT motor (Motor A on L298N)
-  if (leftVel > 0.01) {  // Forward (small deadzone to avoid jitter)
+  if (leftVel > VELOCITY_DEADZONE) {  // Forward (small deadzone to avoid jitter)
     digitalWrite(IN1, HIGH);
     digitalWrite(IN2, LOW);
     analogWrite(ENA, leftPWM);
-  } else if (leftVel < -0.01) {  // Backward
+  } else if (leftVel < -VELOCITY_DEADZONE) {  // Backward
     digitalWrite(IN1, LOW);
     digitalWrite(IN2, HIGH);
     analogWrite(ENA, leftPWM);
@@ -189,11 +202,11 @@ void driveMotors(float linear, float angular) {
   }
   
   // Control RIGHT motor (Motor B on L298N)
-  if (rightVel > 0.01) {  // Forward
+  if (rightVel > VELOCITY_DEADZONE) {  // Forward
     digitalWrite(IN3, HIGH);
     digitalWrite(IN4, LOW);
     analogWrite(ENB, rightPWM);
-  } else if (rightVel < -0.01) {  // Backward
+  } else if (rightVel < -VELOCITY_DEADZONE) {  // Backward
     digitalWrite(IN3, LOW);
     digitalWrite(IN4, HIGH);
     analogWrite(ENB, rightPWM);
