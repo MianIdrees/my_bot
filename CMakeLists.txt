@@ -33,8 +33,14 @@ if(BUILD_TESTING)
 endif()
 
 install(
-  DIRECTORY config description launch worlds
+  DIRECTORY config description launch worlds arduino
   DESTINATION share/${PROJECT_NAME}
+)
+
+# Install Python scripts (executable nodes)
+install(PROGRAMS
+  scripts/serial_motor_controller.py
+  DESTINATION lib/${PROJECT_NAME}
 )
 
 ament_package()
