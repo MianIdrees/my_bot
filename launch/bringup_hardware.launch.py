@@ -10,8 +10,8 @@ Usage (on Orange Pi 5):
   ros2 launch my_bot bringup_hardware.launch.py
 
 Optional arguments:
-  lidar_port:=/dev/ttyUSB0      Serial port for RPLidar
-  arduino_port:=/dev/ttyUSB1    Serial port for Arduino Nano
+  lidar_port:=/dev/rplidar      Serial port for RPLidar
+  arduino_port:=/dev/arduino    Serial port for Arduino Uno
   ticks_per_rev:=1320.0         Encoder ticks per wheel revolution
 """
 
@@ -31,11 +31,11 @@ def generate_launch_description():
     # ========================== ARGUMENTS ==========================
 
     lidar_port_arg = DeclareLaunchArgument(
-        'lidar_port', default_value='/dev/ttyUSB0',
+        'lidar_port', default_value='/dev/rplidar',
         description='Serial port for RPLidar C1',
     )
     arduino_port_arg = DeclareLaunchArgument(
-        'arduino_port', default_value='/dev/ttyUSB1',
+        'arduino_port', default_value='/dev/arduino',
         description='Serial port for Arduino Nano motor controller',
     )
     ticks_per_rev_arg = DeclareLaunchArgument(

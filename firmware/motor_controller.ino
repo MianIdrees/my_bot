@@ -1,12 +1,12 @@
 /*
  * ============================================================================
- * Arduino Nano — Dual Motor + Encoder Controller for ROS2 Differential Drive
+ * Arduino Uno — Dual Motor + Encoder Controller for ROS2 Differential Drive
  * ============================================================================
  *
  * Hardware:
  *   - 2x DC motors via L298N motor driver
  *   - 2x Quadrature encoders (channels A & B each)
- *   - Arduino Nano connected to Orange Pi 5 via USB serial
+ *   - Arduino Uno connected to Orange Pi 5 via USB serial
  *
  * Serial Protocol (115200 baud):
  *   Commands FROM ROS2 (Orange Pi → Arduino):

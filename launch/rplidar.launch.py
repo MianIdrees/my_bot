@@ -15,7 +15,7 @@ def generate_launch_description():
 
     serial_baudrate_arg = DeclareLaunchArgument(
         'serial_baudrate',
-        default_value='115200',
+        default_value='460800',
         description='Baud rate for the RPLidar serial connection'
     )
 

@@ -59,7 +59,7 @@ class DiffDriveNode(Node):
         super().__init__('diff_drive_node')
 
         # ========================== PARAMETERS ==========================
-        self.declare_parameter('serial_port', '/dev/ttyUSB1')
+        self.declare_parameter('serial_port', '/dev/arduino')
         self.declare_parameter('baud_rate', 115200)
         self.declare_parameter('wheel_separation', 0.35)
         self.declare_parameter('wheel_radius', 0.05)
