@@ -33,12 +33,14 @@ if(BUILD_TESTING)
 endif()
 
 install(
-  DIRECTORY config description launch worlds
+  DIRECTORY config description launch worlds firmware
   DESTINATION share/${PROJECT_NAME}
 )
 
 install(
-  PROGRAMS scripts/twist_relay.py
+  PROGRAMS
+    scripts/twist_relay.py
+    scripts/diff_drive_node.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

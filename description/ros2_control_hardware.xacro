@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <!--
+      ros2_control hardware interface for REAL robot.
+      This is a placeholder — on real hardware, wheel commands and
+      encoder feedback are handled by the Arduino serial node,
+      NOT by ros2_control. The diff_drive_node.py node handles
+      cmd_vel → motor commands and encoder → odom directly.
+
+      We keep this xacro so the URDF remains valid and joint_state_publisher
+      can still provide transforms for RViz visualization.
+    -->
+
+    <!-- No ros2_control hardware plugin needed for real hardware.
+         The Arduino serial bridge node handles motor control and odometry. -->
+
+</robot>

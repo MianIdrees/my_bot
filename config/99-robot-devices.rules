@@ -1,0 +1,21 @@
+# =============================================================================
+# udev rules for RPLidar C1 and Arduino Nano
+# =============================================================================
+# Install on Orange Pi 5:
+#   sudo cp 99-robot-devices.rules /etc/udev/rules.d/
+#   sudo udevadm control --reload-rules
+#   sudo udevadm trigger
+#
+# This creates stable symlinks:
+#   /dev/rplidar  → RPLidar C1
+#   /dev/arduino  → Arduino Nano
+#
+# To find your device attributes, plug in one device at a time and run:
+#   udevadm info -a -n /dev/ttyUSB0 | grep -E 'idVendor|idProduct|serial'
+# =============================================================================
+
+# RPLidar C1 (Silicon Labs CP210x — typical vendor/product IDs)
+SUBSYSTEM=="tty", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", SYMLINK+="rplidar", MODE="0666"
+
+# Arduino Nano (CH340 USB-to-Serial — typical vendor/product IDs)
+SUBSYSTEM=="tty", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", SYMLINK+="arduino", MODE="0666"
