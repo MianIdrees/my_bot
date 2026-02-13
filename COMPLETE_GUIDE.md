@@ -1,7 +1,7 @@
 # Complete Robot Deployment Guide — Simulation to Real Hardware
 
 **Project**: ROS2 Differential Drive Robot with Nav2 + SLAM  
-**Hardware**: Orange Pi 5 + Arduino Uno + RPLidar C1 + L298N + 2x DC Motors  
+**Hardware**: Orange Pi 5 + Arduino Uno + RPLidar C1 + L298N + 2x JGB37-520 DC Motors  
 **Verified**: February 2026  
 
 ---
@@ -105,23 +105,39 @@ map ──→ odom ──→ base_link ──→ chassis ──→ laser_frame
 | 2 | Arduino Uno | ATmega328P, CH340 USB-serial | Motor + encoder controller |
 | 3 | RPLidar C1 | Slamtec, CP210x USB-serial | 2D laser scanner, 10 Hz, 8m range |
 | 4 | L298N Motor Driver | Dual H-bridge, 12V/2A per channel | Drives both motors |
-| 5 | DC Geared Motors (x2) | 12V, with shaft encoders | Left and right wheels |
-| 6 | Quadrature Encoders (x2) | Hall-effect or optical, 2-channel (A+B) | Attached to or built into motors |
+| 5 | JGB37-520 DC Motor (x2) | 12V, 110RPM, 11 PPR Hall encoder, ~90:1 gear ratio | Left and right drive motors |
+| 6 | 65mm Rubber Wheels (x2) | 65mm diameter × 26mm width | Mounted on 6mm D-shaft via coupling |
 | 7 | 12V Battery | LiPo 3S (11.1V) or 12V lead-acid | Powers motors via L298N |
 | 8 | USB Cables (x2) | USB-B for Arduino, micro-USB for RPLidar | Data + power |
 | 9 | Jumper Wires | Male-male and male-female | For all signal connections |
 | 10 | Robot Chassis | ~30cm × 30cm platform | With 2 drive wheels + 1 caster |
+| 11 | Motor Brackets (x2) | Metal L-brackets | Included with JGB37-520 kit |
+| 12 | Shaft Couplings (x2) | 6mm to wheel adapter | Included with JGB37-520 kit |
 
 ### Robot Dimensions (from URDF)
 
 - **Chassis**: 0.30m × 0.30m × 0.15m (length × width × height)
-- **Wheel radius**: 0.05m (10cm diameter)
+- **Wheel radius**: 0.0325m (65mm diameter)
 - **Wheel separation**: 0.35m (center-to-center distance between wheels)
-- **Wheel width**: 0.04m
+- **Wheel width**: 0.026m (26mm)
+- **Max speed**: ~0.37 m/s (110 RPM × π × 0.065m)
 
 ---
 
 ## 3. Complete Wiring Guide
+
+### JGB37-520 Motor — 6-Pin Connector
+
+Each JGB37-520 motor has a 6-pin connector with these pins (as labelled on the connector):
+
+| Pin | Wire Color | Function |
+|-----|-----------|----------|
+| **M1** | Red | Motor terminal + (to L298N output) |
+| **GND** | Black | Encoder ground (to Arduino GND) |
+| **C2** | Yellow | Encoder signal B (to Arduino digital pin) |
+| **C1** | Green | Encoder signal A (to Arduino interrupt pin) |
+| **Vcc** | Blue | Encoder power (to Arduino 5V) |
+| **M2** | White | Motor terminal - (to L298N output) |
 
 ### 3.1 — Arduino Uno → L298N Motor Driver (6 wires)
 
@@ -140,41 +156,45 @@ Pin 10       ─────── blue ─────────→ IN4  (Rig
 > **IMPORTANT**: Remove the jumper caps from ENA and ENB on the L298N board!
 > Those jumpers hard-wire speed to maximum. You need Arduino PWM control instead.
 
-### 3.2 — L298N → DC Motors (4 wires)
+### 3.2 — L298N → JGB37-520 Motors (4 wires)
+
+Connect the L298N output terminals to the motor terminals (M1 and M2 on each motor's 6-pin connector):
 
 ```
-L298N                                MOTORS
-─────                                ──────
-OUT1 ─────── red ──────────────────→ Left Motor  (+) terminal
-OUT2 ─────── black ────────────────→ Left Motor  (-) terminal
+L298N                                JGB37-520 MOTORS
+─────                                ────────────────
+OUT1 ─────── red ──────────────────→ Left Motor  M1 (Red wire)
+OUT2 ─────── white ────────────────→ Left Motor  M2 (White wire)
 
-OUT3 ─────── red ──────────────────→ Right Motor (+) terminal
-OUT4 ─────── black ────────────────→ Right Motor (-) terminal
+OUT3 ─────── red ──────────────────→ Right Motor M1 (Red wire)
+OUT4 ─────── white ────────────────→ Right Motor M2 (White wire)
 ```
 
-> If a motor spins in the wrong direction, just swap the two wires (OUT1↔OUT2 or OUT3↔OUT4) for that motor.
+> If a motor spins in the wrong direction, just swap M1 and M2 for that motor.
 
-### 3.3 — Encoders → Arduino Uno (4 signal + 4 power wires)
+### 3.3 — JGB37-520 Encoders → Arduino Uno (4 signal + 4 power wires)
+
+From each motor's 6-pin connector, connect the encoder pins:
 
 ```
-LEFT ENCODER                         ARDUINO UNO
-────────────                         ───────────
-Channel A ─────── green ───────────→ Pin 2   (Hardware Interrupt INT0)
-Channel B ─────── white ───────────→ Pin 4
-VCC       ─────── red ─────────────→ 5V
-GND       ─────── black ──────────→ GND
+LEFT MOTOR (6-pin connector)         ARDUINO UNO
+────────────────────────────         ───────────
+C1  (Green wire)  ─────────────────→ Pin 2   (Hardware Interrupt INT0)
+C2  (Yellow wire) ─────────────────→ Pin 4   (Direction sensing)
+Vcc (Blue wire)   ─────────────────→ 5V
+GND (Black wire)  ─────────────────→ GND
 
-RIGHT ENCODER                        ARDUINO UNO
-─────────────                        ───────────
-Channel A ─────── green ───────────→ Pin 3   (Hardware Interrupt INT1)
-Channel B ─────── white ───────────→ Pin 12
-VCC       ─────── red ─────────────→ 5V
-GND       ─────── black ──────────→ GND
+RIGHT MOTOR (6-pin connector)        ARDUINO UNO
+─────────────────────────────        ───────────
+C1  (Green wire)  ─────────────────→ Pin 3   (Hardware Interrupt INT1)
+C2  (Yellow wire) ─────────────────→ Pin 12  (Direction sensing)
+Vcc (Blue wire)   ─────────────────→ 5V
+GND (Black wire)  ─────────────────→ GND
 ```
 
-> **Pins 2 and 3 MUST be used for Channel A** — they are the only hardware interrupt pins on Arduino Uno. The firmware uses interrupts for accurate tick counting.
+> **Pins 2 and 3 MUST be used for C1** — they are the only hardware interrupt pins on Arduino Uno. The firmware uses interrupts for accurate tick counting.
 
-> If your encoders are 3.3V type, use Arduino's **3.3V** pin instead of 5V.
+> **If encoder counts go in the wrong direction**: swap C1 and C2 wires for that motor.
 
 ### 3.4 — Power Wiring
 
@@ -199,7 +219,7 @@ RPLidar C1                           ORANGE PI 5
 Micro-USB ─────── USB cable ───────→ Any USB-A port (different from Arduino)
 ```
 
-> **Do NOT connect L298N's 5V output to Arduino's 5V pin** — the Arduino is already powered from the Orange Pi via USB. Connecting both power sources can damage the Arduino.
+> **Do NOT connect L298N's 5V output to Arduino's 5V pin** — the Arduino is already powered from the Orange Pi via USB.
 
 > **The L298N GND ↔ Arduino GND wire is CRITICAL**. Without it, the motor driver signals will not work correctly.
 
@@ -207,18 +227,18 @@ Micro-USB ─────── USB cable ───────→ Any USB-A por
 
 | Arduino Uno Pin | Connected To | Function |
 |-----------------|-------------|----------|
-| **Pin 2** | Left Encoder Channel A | Interrupt (tick counting) |
-| **Pin 3** | Right Encoder Channel A | Interrupt (tick counting) |
-| **Pin 4** | Left Encoder Channel B | Direction sensing |
+| **Pin 2** | Left Motor C1 (Green) | Interrupt INT0 (encoder tick counting) |
+| **Pin 3** | Right Motor C1 (Green) | Interrupt INT1 (encoder tick counting) |
+| **Pin 4** | Left Motor C2 (Yellow) | Direction sensing |
 | **Pin 5** (PWM) | L298N ENA | Left motor speed (0-255) |
 | **Pin 6** (PWM) | L298N ENB | Right motor speed (0-255) |
 | **Pin 7** | L298N IN1 | Left motor direction |
 | **Pin 8** | L298N IN2 | Left motor direction |
 | **Pin 9** | L298N IN3 | Right motor direction |
 | **Pin 10** | L298N IN4 | Right motor direction |
-| **Pin 12** | Right Encoder Channel B | Direction sensing |
-| **5V** | Both Encoder VCC | Encoder power |
-| **GND** | Both Encoder GND + L298N GND | Common ground |
+| **Pin 12** | Right Motor C2 (Yellow) | Direction sensing |
+| **5V** | Both Motor Vcc (Blue) | Encoder power |
+| **GND** | Both Motor GND (Black) + L298N GND | Common ground |
 | **USB-B** | Orange Pi 5 USB-A | Serial data (115200 baud) + 5V power |
 
 ### 3.6 — Physical Layout on Robot
@@ -349,7 +369,8 @@ source install/setup.bash
 ### 5.1 — What the Firmware Does
 
 The file `firmware/motor_controller.ino` runs on the Arduino Uno and:
-- Reads quadrature encoder ticks via hardware interrupts on pins 2 and 3
+- Controls 2x JGB37-520 DC12V 110RPM geared motors via L298N driver
+- Reads Hall encoder ticks (11 PPR × 90:1 gear = 990 ticks/rev) via hardware interrupts on pins 2 and 3
 - Sends encoder counts to Orange Pi every 50ms: `e <left_ticks> <right_ticks>\n`
 - Receives motor commands from Orange Pi: `m <left_pwm> <right_pwm>\n` (range -255 to 255)
 - Accepts encoder reset: `r\n` → responds `r ok\n`
@@ -731,6 +752,7 @@ The Nav2 configuration is in `config/nav2_params_hardware.yaml`:
 | Controller | DWB | Dynamic Window controller |
 | Costmap resolution | 0.05 m | 5cm per pixel |
 | Inflation radius | 0.3 m | Safety buffer around obstacles |
+| Robot radius | ~0.18 m | Based on 0.30m chassis + margin |
 
 ---
 
@@ -738,7 +760,7 @@ The Nav2 configuration is in `config/nav2_params_hardware.yaml`:
 
 ### 10.1 — Why Calibrate
 
-The `ticks_per_rev` parameter tells the diff_drive_node how many encoder ticks equal one full wheel revolution. This directly affects odometry accuracy. The default is 1320 ticks/rev but your motors may differ.
+The `ticks_per_rev` parameter tells the diff_drive_node how many encoder ticks equal one full wheel revolution. This directly affects odometry accuracy. The default is 990 ticks/rev (JGB37-520: 11 PPR × 90:1 gear ratio) but your specific motor may differ slightly.
 
 ### 10.2 — Measure Ticks Per Revolution
 
@@ -776,7 +798,7 @@ ros2 launch my_bot bringup_hardware.launch.py ticks_per_rev:=<your_value>
 
 Or permanently edit [launch/bringup_hardware.launch.py](launch/bringup_hardware.launch.py) line 42:
 ```python
-'ticks_per_rev', default_value='<your_value>',
+'ticks_per_rev', default_value='<your_value>',  # default 990 for JGB37-520 110RPM
 ```
 
 ### 10.4 — Verify Motor Direction
@@ -841,16 +863,17 @@ ros2 topic pub /cmd_vel geometry_msgs/msg/Twist \
 |---------|-------|-----|
 | diff_drive_node connects but motors don't move | L298N ENA/ENB jumpers still on | Remove the jumper caps from ENA and ENB |
 | One motor doesn't spin | Loose L298N wiring | Check OUT1-4 connections and IN1-4 wires |
-| Motors spin wrong direction | Wire polarity reversed | Swap OUT1↔OUT2 or OUT3↔OUT4 for that motor |
+| Motors spin wrong direction | M1/M2 polarity reversed | Swap M1↔M2 wires on the L298N output for that motor |
 | Motors stop after 0.5s | No cmd_vel being sent | The firmware has a 500ms safety timeout; keep sending commands |
 
 ### Odometry drifting
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| Robot position drifts in RViz2 | Wrong ticks_per_rev | Calibrate (Section 10) |
+| Odometry drifting badly | Wrong ticks_per_rev | Calibrate (Section 10); default 990 for JGB37-520 |
 | Robot turns when going straight | Wheel diameters differ | Adjust wheel_radius per side in diff_drive_node params |
-| Position jumps | Encoder wires loose | Check encoder connections; secure with hot glue |
+| Position jumps | Encoder wires loose | Check C1/C2 connections on 6-pin connector; secure with hot glue |
+| Encoder counts wrong direction | C1/C2 swapped | Swap C1 and C2 wires for that motor |
 
 ---
 

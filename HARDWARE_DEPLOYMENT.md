@@ -800,3 +800,169 @@ ros2 topic pub /cmd_vel geometry_msgs/msg/Twist \
 # If a wheel spins backward, swap IN1/IN2 (or IN3/IN4) wires
 # OR negate the PWM in Arduino code for that motor
 ```
+
+
+""
+ssh orangepi@192.168.18.38    # password: orangepi
+
+
+Terminal 1 — Hardware Bringup (always first):
+
+source /opt/ros/humble/setup.bash
+source ~/robot_ws/install/setup.bash
+export ROS_DOMAIN_ID=42
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+ros2 launch my_bot bringup_hardware.launch.py
+
+This starts 3 nodes:
+robot_state_publisher — publishes URDF TF tree
+rplidar_node — reads RPLidar C1, publishes /scan at 10Hz
+diff_drive_node — talks to Arduino, converts /cmd_vel → motor PWM, reads encoders → publishes /odom at 20Hz
+
+
+Terminal 2 — SLAM mapping (to build a map):
+
+source /opt/ros/humble/setup.bash
+source ~/robot_ws/install/setup.bash
+export ROS_DOMAIN_ID=42
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+
+ros2 launch my_bot slam_hardware.launch.py
+This starts slam_toolbox which builds a map from /scan + /odom.
+
+
+Terminal 3 — Save the map (after driving around):
+source /opt/ros/humble/setup.bash
+mkdir -p ~/maps
+ros2 run nav2_map_server map_saver_cli -f ~/maps/my_map
+
+
+
+Terminal 2 (alternative) — Nav2 navigation (after you have a map):
+source /opt/ros/humble/setup.bash
+source ~/robot_ws/install/setup.bash
+export ROS_DOMAIN_ID=42
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+
+ros2 launch my_bot navigation_hardware.launch.py map:=/home/orangepi/maps/my_map.yaml
+
+
+
+On Desktop PC (your laptop) — For visualization & control:
+
+Terminal 1 — RViz2 visualization:
+
+source /opt/ros/jazzy/setup.bash
+export ROS_DOMAIN_ID=42
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+
+# Option A: Use our launch file (if my_bot package is built on desktop too)
+ros2 launch my_bot rviz_remote.launch.py
+
+# Option B: Run RViz2 directly
+rviz2
+
+In RViz2, add these displays:
+
+RobotModel (topic: /robot_description)
+LaserScan (topic: /scan)
+Map (topic: /map)
+TF (show transforms)
+Odometry (topic: /odom)
+Path (topic: /plan — for Nav2 paths)
+Set Fixed Frame to map
+
+Terminal 2 — Keyboard teleoperation (to drive the robot):
+
+source /opt/ros/jazzy/setup.bash
+export ROS_DOMAIN_ID=42
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+
+ros2 run teleop_twist_keyboard teleop_twist_keyboard
+
+Typical Workflow Sequence:
+Step 1: Wire everything, power on
+Step 2: SSH into Orange Pi → run bringup_hardware.launch.py
+Step 3: On desktop → open RViz2, verify /scan + /odom visible
+Step 4: On desktop → run teleop_twist_keyboard, verify robot moves
+Step 5: SSH into Orange Pi → run slam_hardware.launch.py 
+Step 6: Drive robot around with teleop to build map (watch in RViz2)
+Step 7: SSH into Orange Pi → save map
+Step 8: Stop SLAM → start navigation_hardware.launch.py with saved map
+Step 9: In RViz2 → click "2D Pose Estimate" to localize
+Step 10: In RViz2 → click "2D Goal Pose" to navigate autonomously
+
+
+
+Encoder Calibration (important after wiring)
+After motors and encoders are connected, you need to calibrate ticks_per_rev. Spin one wheel exactly one full revolution by hand and note the tick count:
+
+# On Orange Pi, with bringup running:
+ros2 topic echo /odom    # watch the encoder counts
+
+
+
+python3 -c "
+import serial, time
+ser = serial.Serial('/dev/arduino', 115200, timeout=1)
+time.sleep(2)
+ser.write(b'r\n')  # reset counters
+time.sleep(0.1)
+print('Rotate LEFT wheel one full turn, then press Enter')
+input()
+for i in range(3):
+    line = ser.readline().decode().strip()
+    print(line)
+ser.close()
+"
+
+Then update the launch parameter:
+ros2 launch my_bot bringup_hardware.launch.py ticks_per_rev:=<your_count>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

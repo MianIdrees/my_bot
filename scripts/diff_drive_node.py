@@ -62,9 +62,9 @@ class DiffDriveNode(Node):
         self.declare_parameter('serial_port', '/dev/arduino')
         self.declare_parameter('baud_rate', 115200)
         self.declare_parameter('wheel_separation', 0.35)
-        self.declare_parameter('wheel_radius', 0.05)
-        self.declare_parameter('ticks_per_rev', 1320.0)  # encoder CPR × gear ratio
-        self.declare_parameter('max_motor_speed', 0.5)    # m/s at PWM 255
+        self.declare_parameter('wheel_radius', 0.0325)   # 65mm wheels
+        self.declare_parameter('ticks_per_rev', 990.0)    # JGB37-520: 11 PPR × 90:1 gear
+        self.declare_parameter('max_motor_speed', 0.37)   # ~110 RPM × π × 0.065m
         self.declare_parameter('odom_frame', 'odom')
         self.declare_parameter('base_frame', 'base_link')
         self.declare_parameter('publish_tf', True)

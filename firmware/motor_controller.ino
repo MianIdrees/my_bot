@@ -3,9 +3,23 @@
  * Arduino Uno — Dual Motor + Encoder Controller for ROS2 Differential Drive
  * ============================================================================
  *
+ * Motors: JGB37-520 DC12V 110RPM with Hall Encoder (11 PPR)
+ *   - Gear ratio: ~90:1
+ *   - Encoder resolution: 11 pulses/motor-rev × 90 = 990 ticks/output-rev
+ *   - Wheels: 65mm diameter (0.0325m radius)
+ *   - Max speed: ~0.37 m/s at 12V no-load
+ *
+ * Motor 6-Pin Connector (as labelled on connector):
+ *   M1  = Motor terminal + (Red wire)    → connect to L298N OUT
+ *   GND = Encoder ground  (Black wire)   → connect to Arduino GND
+ *   C2  = Encoder signal  (Yellow wire)  → connect to Arduino digital pin
+ *   C1  = Encoder signal  (Green wire)   → connect to Arduino interrupt pin
+ *   Vcc = Encoder power   (Blue wire)    → connect to Arduino 5V
+ *   M2  = Motor terminal - (White wire)  → connect to L298N OUT
+ *
  * Hardware:
- *   - 2x DC motors via L298N motor driver
- *   - 2x Quadrature encoders (channels A & B each)
+ *   - 2x JGB37-520 DC12V 110RPM geared motors with Hall encoders
+ *   - 1x L298N dual H-bridge motor driver
  *   - Arduino Uno connected to Orange Pi 5 via USB serial
  *
  * Serial Protocol (115200 baud):
@@ -23,47 +37,58 @@
  *     r\n
  *       Resets encoder counts to zero
  *
- * Wiring (adjust pin numbers to match your setup):
- *   L298N Motor Driver 1 (Left Motor):
- *     ENA → Pin 5  (PWM)
- *     IN1 → Pin 7
- *     IN2 → Pin 8
+ * Wiring:
+ *   L298N Motor Driver → Left Motor (JGB37-520):
+ *     ENA → Arduino Pin 5  (PWM speed)
+ *     IN1 → Arduino Pin 7  (direction)
+ *     IN2 → Arduino Pin 8  (direction)
+ *     OUT1 → Left motor M1
+ *     OUT2 → Left motor M2
  *
- *   L298N Motor Driver 2 (Right Motor):
- *     ENB → Pin 6  (PWM)
- *     IN3 → Pin 9
- *     IN4 → Pin 10
+ *   L298N Motor Driver → Right Motor (JGB37-520):
+ *     ENB → Arduino Pin 6  (PWM speed)
+ *     IN3 → Arduino Pin 9  (direction)
+ *     IN4 → Arduino Pin 10 (direction)
+ *     OUT3 → Right motor M1
+ *     OUT4 → Right motor M2
  *
- *   Left Encoder:
- *     Channel A → Pin 2  (interrupt)
- *     Channel B → Pin 4
+ *   Left Motor Encoder (from 6-pin connector):
+ *     C1  → Arduino Pin 2   (interrupt INT0)
+ *     C2  → Arduino Pin 4   (direction sensing)
+ *     Vcc → Arduino 5V
+ *     GND → Arduino GND
  *
- *   Right Encoder:
- *     Channel A → Pin 3  (interrupt)
- *     Channel B → Pin 12
+ *   Right Motor Encoder (from 6-pin connector):
+ *     C1  → Arduino Pin 3   (interrupt INT1)
+ *     C2  → Arduino Pin 12  (direction sensing)
+ *     Vcc → Arduino 5V
+ *     GND → Arduino GND
+ *
+ *   NOTE: If a wheel counts in the wrong direction, swap C1 and C2
+ *         for that motor. If a motor spins the wrong way, swap M1 and M2.
  *
  * ============================================================================
  */
 
 // ========================== PIN DEFINITIONS ==========================
 
-// Left Motor (L298N)
-#define LEFT_ENA   5    // PWM speed control
-#define LEFT_IN1   7    // Direction
-#define LEFT_IN2   8    // Direction
+// Left Motor (L298N → JGB37-520)
+#define LEFT_ENA   5    // PWM speed control (L298N ENA)
+#define LEFT_IN1   7    // Direction (L298N IN1)
+#define LEFT_IN2   8    // Direction (L298N IN2)
 
-// Right Motor (L298N)
-#define RIGHT_ENB  6    // PWM speed control
-#define RIGHT_IN3  9    // Direction
-#define RIGHT_IN4  10   // Direction
+// Right Motor (L298N → JGB37-520)
+#define RIGHT_ENB  6    // PWM speed control (L298N ENB)
+#define RIGHT_IN3  9    // Direction (L298N IN3)
+#define RIGHT_IN4  10   // Direction (L298N IN4)
 
-// Left Encoder
-#define LEFT_ENC_A   2  // Interrupt pin
-#define LEFT_ENC_B   4
+// Left Encoder (JGB37-520 Hall encoder, 11 PPR × 90:1 gear = 990 ticks/rev)
+#define LEFT_ENC_A   2  // C1 pin on motor connector → Interrupt INT0
+#define LEFT_ENC_B   4  // C2 pin on motor connector → Direction sensing
 
-// Right Encoder
-#define RIGHT_ENC_A  3  // Interrupt pin
-#define RIGHT_ENC_B  12
+// Right Encoder (JGB37-520 Hall encoder, 11 PPR × 90:1 gear = 990 ticks/rev)
+#define RIGHT_ENC_A  3  // C1 pin on motor connector → Interrupt INT1
+#define RIGHT_ENC_B  12 // C2 pin on motor connector → Direction sensing
 
 // ========================== CONFIGURATION ==========================
 

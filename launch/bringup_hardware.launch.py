@@ -12,7 +12,7 @@ Usage (on Orange Pi 5):
 Optional arguments:
   lidar_port:=/dev/rplidar      Serial port for RPLidar
   arduino_port:=/dev/arduino    Serial port for Arduino Uno
-  ticks_per_rev:=1320.0         Encoder ticks per wheel revolution
+  ticks_per_rev:=990.0          JGB37-520 encoder ticks per wheel revolution (11 PPR × 90:1)
 """
 
 import os
@@ -39,8 +39,8 @@ def generate_launch_description():
         description='Serial port for Arduino Nano motor controller',
     )
     ticks_per_rev_arg = DeclareLaunchArgument(
-        'ticks_per_rev', default_value='1320.0',
-        description='Encoder ticks per full wheel revolution',
+        'ticks_per_rev', default_value='990.0',
+        description='JGB37-520 encoder ticks per full wheel revolution (11 PPR x 90:1 gear)',
     )
 
     # ========================== ROBOT STATE PUBLISHER ==========================
@@ -80,9 +80,9 @@ def generate_launch_description():
             'serial_port': LaunchConfiguration('arduino_port'),
             'baud_rate': 115200,
             'wheel_separation': 0.35,
-            'wheel_radius': 0.05,
+            'wheel_radius': 0.0325,
             'ticks_per_rev': LaunchConfiguration('ticks_per_rev'),
-            'max_motor_speed': 0.5,
+            'max_motor_speed': 0.37,
             'odom_frame': 'odom',
             'base_frame': 'base_link',
             'publish_tf': True,
