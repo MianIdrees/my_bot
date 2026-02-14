@@ -106,21 +106,28 @@
 // The incoming 'm' command (-255 to 255) is treated as a target speed.
 // PID measures actual speed from encoder ticks and adjusts PWM to match.
 //
-// At 110 RPM: 990 ticks/rev × (110/60) rev/s × 0.05s = ~90 ticks per interval
-#define MAX_TICKS_PER_INTERVAL  91
+// CALIBRATED VALUES (measured from actual motors):
+//   Left motor max:  ~63 ticks/50ms at PWM 255
+//   Right motor max: ~77 ticks/50ms at PWM 255
+//   Use the SLOWER motor's max so PID can equalize both.
+#define MAX_TICKS_PER_INTERVAL  60
 
-// PID gains — conservative defaults, tune if needed
-// Kp: proportional (main correction force)
-// Ki: integral (eliminates steady-state error / motor difference)
-// Kd: derivative (dampens oscillation)
-#define KP   2.0
-#define KI   1.0
-#define KD   0.1
-#define INTEGRAL_LIMIT  80.0    // Anti-windup clamp
+// Minimum PWM to overcome motor+gearbox stiction and L298N voltage drop.
+// Below this, the motor won't spin. PID dead-zone compensation.
+#define MIN_PWM  45
+
+// PID gains — tuned to avoid oscillation with 17% motor speed difference
+// Kp: proportional — KEEP LOW to prevent overshoot oscillation
+// Ki: integral — main correction force, eliminates steady-state error
+// Kd: derivative — dampens oscillation
+#define KP   0.5
+#define KI   2.0
+#define KD   0.05
+#define INTEGRAL_LIMIT  200.0   // High limit so integral can fully correct motor difference
 
 // Per-motor PID state
 struct MotorPID {
-    float target;          // target ticks per interval (-91 to +91)
+    float target;          // target ticks per interval (-60 to +60)
     float integral;        // accumulated error
     float prev_error;      // previous error for derivative
     int   output_pwm;      // actual PWM being applied to motor
@@ -132,6 +139,9 @@ MotorPID right_pid = {0, 0, 0, 0};
 // Previous tick values for computing speed (ticks per interval)
 long prev_left_ticks  = 0;
 long prev_right_ticks = 0;
+
+// Debug mode: when > 0, prints PID state each update, decrements each time
+int debug_countdown = 0;
 
 // ========================== GLOBAL STATE ==========================
 
@@ -226,15 +236,23 @@ void updateMotorPID(MotorPID &pid, long delta_ticks, int ena_pin, int in1_pin, i
     float derivative = error - pid.prev_error;
     pid.prev_error = error;
 
-    // Feedforward: estimate PWM from target speed (gets us close)
-    int feedforward = (int)((pid.target / (float)MAX_TICKS_PER_INTERVAL) * 255.0f);
+    // Feedforward: estimate PWM from target speed
+    float ff_ratio = pid.target / (float)MAX_TICKS_PER_INTERVAL;
+    int feedforward = (int)(ff_ratio * 255.0f);
 
     // PID correction on top of feedforward
     float correction = KP * error + KI * pid.integral + KD * derivative;
 
     pid.output_pwm = feedforward + (int)correction;
+
+    // Clamp to valid PWM range
     if (pid.output_pwm > 255)  pid.output_pwm = 255;
     if (pid.output_pwm < -255) pid.output_pwm = -255;
+
+    // Dead-zone compensation: if output is non-zero but below minimum,
+    // boost to minimum PWM so the motor actually spins
+    if (pid.output_pwm > 0 && pid.output_pwm < MIN_PWM) pid.output_pwm = MIN_PWM;
+    if (pid.output_pwm < 0 && pid.output_pwm > -MIN_PWM) pid.output_pwm = -MIN_PWM;
 
     setMotor(pid.output_pwm, ena_pin, in1_pin, in2_pin);
 }
@@ -255,6 +273,27 @@ void updatePID() {
     // Update PID for each motor
     updateMotorPID(left_pid,  delta_left,  LEFT_ENA,  LEFT_IN1,  LEFT_IN2);
     updateMotorPID(right_pid, delta_right, RIGHT_ENB, RIGHT_IN3, RIGHT_IN4);
+
+    // Debug output: print PID internals when enabled
+    if (debug_countdown > 0) {
+        debug_countdown--;
+        Serial.print("d L:");
+        Serial.print(left_pid.target, 1);
+        Serial.print(",");
+        Serial.print(delta_left);
+        Serial.print(",");
+        Serial.print(left_pid.integral, 1);
+        Serial.print(",");
+        Serial.print(left_pid.output_pwm);
+        Serial.print(" R:");
+        Serial.print(right_pid.target, 1);
+        Serial.print(",");
+        Serial.print(delta_right);
+        Serial.print(",");
+        Serial.print(right_pid.integral, 1);
+        Serial.print(",");
+        Serial.println(right_pid.output_pwm);
+    }
 }
 
 // ========================== SERIAL COMMAND PARSING ==========================
@@ -286,6 +325,10 @@ void processCommand(const char* cmd) {
         right_pid.integral = 0;
         right_pid.prev_error = 0;
         Serial.println("r ok");
+    } else if (cmd[0] == 'd') {
+        // Debug: enable PID state output for next 100 intervals (5 seconds)
+        debug_countdown = 100;
+        Serial.println("d on");
     }
 }
 
