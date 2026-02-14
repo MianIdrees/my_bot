@@ -94,8 +94,44 @@
 
 #define SERIAL_BAUD       115200
 #define PUBLISH_INTERVAL_MS  50   // Send encoder data every 50ms (20 Hz)
+#define PID_INTERVAL_MS      50   // PID update rate (same as publish)
 #define CMD_TIMEOUT_MS     500    // Stop motors if no command received for 500ms
 #define SERIAL_BUF_SIZE     64
+
+// ========================== PID SPEED CONTROL ==========================
+// PID controller uses encoder feedback to equalize wheel speeds.
+// Without PID, one motor often runs faster than the other due to
+// manufacturing differences — this is normal for DC motors.
+//
+// The incoming 'm' command (-255 to 255) is treated as a target speed.
+// PID measures actual speed from encoder ticks and adjusts PWM to match.
+//
+// At 110 RPM: 990 ticks/rev × (110/60) rev/s × 0.05s = ~90 ticks per interval
+#define MAX_TICKS_PER_INTERVAL  91
+
+// PID gains — conservative defaults, tune if needed
+// Kp: proportional (main correction force)
+// Ki: integral (eliminates steady-state error / motor difference)
+// Kd: derivative (dampens oscillation)
+#define KP   2.0
+#define KI   1.0
+#define KD   0.1
+#define INTEGRAL_LIMIT  80.0    // Anti-windup clamp
+
+// Per-motor PID state
+struct MotorPID {
+    float target;          // target ticks per interval (-91 to +91)
+    float integral;        // accumulated error
+    float prev_error;      // previous error for derivative
+    int   output_pwm;      // actual PWM being applied to motor
+};
+
+MotorPID left_pid  = {0, 0, 0, 0};
+MotorPID right_pid = {0, 0, 0, 0};
+
+// Previous tick values for computing speed (ticks per interval)
+long prev_left_ticks  = 0;
+long prev_right_ticks = 0;
 
 // ========================== GLOBAL STATE ==========================
 
@@ -105,6 +141,7 @@ volatile long right_ticks = 0;
 
 // Timing
 unsigned long last_publish_time = 0;
+unsigned long last_pid_time     = 0;
 unsigned long last_cmd_time     = 0;
 
 // Serial input buffer
@@ -153,7 +190,71 @@ void setMotors(int left_pwm, int right_pwm) {
 }
 
 void stopMotors() {
+    left_pid.target = 0;
+    left_pid.integral = 0;
+    left_pid.prev_error = 0;
+    left_pid.output_pwm = 0;
+    right_pid.target = 0;
+    right_pid.integral = 0;
+    right_pid.prev_error = 0;
+    right_pid.output_pwm = 0;
     setMotors(0, 0);
+}
+
+// ========================== PID UPDATE ==========================
+
+void updateMotorPID(MotorPID &pid, long delta_ticks, int ena_pin, int in1_pin, int in2_pin) {
+    // If target is zero, stop immediately and reset PID state
+    if (pid.target > -0.5f && pid.target < 0.5f) {
+        pid.output_pwm = 0;
+        pid.integral = 0;
+        pid.prev_error = 0;
+        setMotor(0, ena_pin, in1_pin, in2_pin);
+        return;
+    }
+
+    // Compute error: difference between target and actual speed
+    float actual = (float)delta_ticks;
+    float error = pid.target - actual;
+
+    // Integral with anti-windup
+    pid.integral += error;
+    if (pid.integral > INTEGRAL_LIMIT)  pid.integral = INTEGRAL_LIMIT;
+    if (pid.integral < -INTEGRAL_LIMIT) pid.integral = -INTEGRAL_LIMIT;
+
+    // Derivative
+    float derivative = error - pid.prev_error;
+    pid.prev_error = error;
+
+    // Feedforward: estimate PWM from target speed (gets us close)
+    int feedforward = (int)((pid.target / (float)MAX_TICKS_PER_INTERVAL) * 255.0f);
+
+    // PID correction on top of feedforward
+    float correction = KP * error + KI * pid.integral + KD * derivative;
+
+    pid.output_pwm = feedforward + (int)correction;
+    if (pid.output_pwm > 255)  pid.output_pwm = 255;
+    if (pid.output_pwm < -255) pid.output_pwm = -255;
+
+    setMotor(pid.output_pwm, ena_pin, in1_pin, in2_pin);
+}
+
+void updatePID() {
+    // Read current encoder values
+    noInterrupts();
+    long l = left_ticks;
+    long r = right_ticks;
+    interrupts();
+
+    // Compute ticks in this interval (= speed)
+    long delta_left  = l - prev_left_ticks;
+    long delta_right = r - prev_right_ticks;
+    prev_left_ticks  = l;
+    prev_right_ticks = r;
+
+    // Update PID for each motor
+    updateMotorPID(left_pid,  delta_left,  LEFT_ENA,  LEFT_IN1,  LEFT_IN2);
+    updateMotorPID(right_pid, delta_right, RIGHT_ENB, RIGHT_IN3, RIGHT_IN4);
 }
 
 // ========================== SERIAL COMMAND PARSING ==========================
@@ -161,11 +262,15 @@ void stopMotors() {
 void processCommand(const char* cmd) {
     if (cmd[0] == 'm') {
         // Motor command: m <left_pwm> <right_pwm>
+        // Values -255 to 255 are treated as target speed (not raw PWM)
+        // PID controller will adjust actual PWM to match target speed
         int left_pwm = 0, right_pwm = 0;
         if (sscanf(cmd + 1, "%d %d", &left_pwm, &right_pwm) == 2) {
             left_pwm  = constrain(left_pwm,  -255, 255);
             right_pwm = constrain(right_pwm, -255, 255);
-            setMotors(left_pwm, right_pwm);
+            // Convert command to target ticks per interval
+            left_pid.target  = (left_pwm  / 255.0f) * MAX_TICKS_PER_INTERVAL;
+            right_pid.target = (right_pwm / 255.0f) * MAX_TICKS_PER_INTERVAL;
             last_cmd_time = millis();
         }
     } else if (cmd[0] == 'r') {
@@ -174,6 +279,12 @@ void processCommand(const char* cmd) {
         left_ticks  = 0;
         right_ticks = 0;
         interrupts();
+        prev_left_ticks  = 0;
+        prev_right_ticks = 0;
+        left_pid.integral = 0;
+        left_pid.prev_error = 0;
+        right_pid.integral = 0;
+        right_pid.prev_error = 0;
         Serial.println("r ok");
     }
 }
@@ -233,7 +344,7 @@ void setup() {
 
     stopMotors();
 
-    Serial.println("Arduino motor controller ready");
+    Serial.println("Arduino motor controller ready (PID enabled)");
 }
 
 void loop() {
@@ -243,6 +354,12 @@ void loop() {
     // Safety: stop motors if no command received recently
     if (millis() - last_cmd_time > CMD_TIMEOUT_MS) {
         stopMotors();
+    }
+
+    // PID speed control update at fixed interval
+    if (millis() - last_pid_time >= PID_INTERVAL_MS) {
+        updatePID();
+        last_pid_time = millis();
     }
 
     // Publish encoder ticks at fixed interval
