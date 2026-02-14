@@ -106,35 +106,40 @@
 // The incoming 'm' command (-255 to 255) is treated as a target speed.
 // PID measures actual speed from encoder ticks and adjusts PWM to match.
 //
-// CALIBRATED VALUES (measured from actual motors):
-//   Left motor max:  ~63 ticks/50ms at PWM 255
-//   Right motor max: ~77 ticks/50ms at PWM 255
-//   Use the SLOWER motor's max so PID can equalize both.
-#define MAX_TICKS_PER_INTERVAL  60
+// PER-MOTOR CALIBRATION (measured from actual motors at PWM 255):
+//   Left motor max:  ~63 ticks/50ms → LEFT_MAX_TICKS  = 63
+//   Right motor max: ~77 ticks/50ms → RIGHT_MAX_TICKS = 77
+//   Use the SLOWER motor for command scaling (so max cmd = max achievable).
+#define MAX_TICKS_PER_INTERVAL  60    // For target conversion from cmd PWM
+#define LEFT_MAX_TICKS          48    // Operating-point calibrated: left needs ~186 PWM for 35 ticks
+#define RIGHT_MAX_TICKS         84    // Operating-point calibrated: right needs ~107 PWM for 35 ticks
 
 // Minimum PWM to overcome motor+gearbox stiction and L298N voltage drop.
-// Below this, the motor won't spin. PID dead-zone compensation.
-#define MIN_PWM  45
+#define MIN_PWM  40
 
-// PID gains — tuned to avoid oscillation with 17% motor speed difference
-// Kp: proportional — KEEP LOW to prevent overshoot oscillation
-// Ki: integral — main correction force, eliminates steady-state error
-// Kd: derivative — dampens oscillation
+// PID gains — tuned for smooth convergence with per-motor feedforward
+// Feedforward handles ~90% of the PWM, PID is only for fine correction.
 #define KP   0.5
-#define KI   2.0
+#define KI   1.5
 #define KD   0.05
-#define INTEGRAL_LIMIT  200.0   // High limit so integral can fully correct motor difference
+#define INTEGRAL_LIMIT  150.0
+
+// Target ramping: instead of jumping to new target instantly (which causes
+// massive PID overshoot), ramp the target gradually. This keeps PID error
+// small at all times, preventing integral windup and overshoot.
+#define RAMP_RATE  7.0f   // ticks/interval per PID cycle (reach 35 in 5 cycles = 250ms)
 
 // Per-motor PID state
 struct MotorPID {
-    float target;          // target ticks per interval (-60 to +60)
+    float target;          // current (ramped) target ticks per interval
+    float cmd_target;      // commanded target (from serial command)
     float integral;        // accumulated error
     float prev_error;      // previous error for derivative
     int   output_pwm;      // actual PWM being applied to motor
 };
 
-MotorPID left_pid  = {0, 0, 0, 0};
-MotorPID right_pid = {0, 0, 0, 0};
+MotorPID left_pid  = {0, 0, 0, 0, 0};
+MotorPID right_pid = {0, 0, 0, 0, 0};
 
 // Previous tick values for computing speed (ticks per interval)
 long prev_left_ticks  = 0;
@@ -201,10 +206,12 @@ void setMotors(int left_pwm, int right_pwm) {
 
 void stopMotors() {
     left_pid.target = 0;
+    left_pid.cmd_target = 0;
     left_pid.integral = 0;
     left_pid.prev_error = 0;
     left_pid.output_pwm = 0;
     right_pid.target = 0;
+    right_pid.cmd_target = 0;
     right_pid.integral = 0;
     right_pid.prev_error = 0;
     right_pid.output_pwm = 0;
@@ -213,7 +220,28 @@ void stopMotors() {
 
 // ========================== PID UPDATE ==========================
 
-void updateMotorPID(MotorPID &pid, long delta_ticks, int ena_pin, int in1_pin, int in2_pin) {
+void updateMotorPID(MotorPID &pid, long delta_ticks, int motor_max_ticks, int ena_pin, int in1_pin, int in2_pin) {
+    // Ramp target toward cmd_target (smooth acceleration/deceleration)
+    bool is_ramping = false;
+    if (pid.target < pid.cmd_target - 0.5f) {
+        pid.target += RAMP_RATE;
+        if (pid.target > pid.cmd_target) pid.target = pid.cmd_target;
+        is_ramping = true;
+    } else if (pid.target > pid.cmd_target + 0.5f) {
+        pid.target -= RAMP_RATE;
+        if (pid.target < pid.cmd_target) pid.target = pid.cmd_target;
+        is_ramping = true;
+    } else {
+        pid.target = pid.cmd_target;
+    }
+
+    // During ramping, keep integral at zero to prevent accumulation
+    // that causes overshoot when ramp reaches target
+    if (is_ramping) {
+        pid.integral = 0;
+        pid.prev_error = 0;
+    }
+
     // If target is zero, stop immediately and reset PID state
     if (pid.target > -0.5f && pid.target < 0.5f) {
         pid.output_pwm = 0;
@@ -227,30 +255,40 @@ void updateMotorPID(MotorPID &pid, long delta_ticks, int ena_pin, int in1_pin, i
     float actual = (float)delta_ticks;
     float error = pid.target - actual;
 
-    // Integral with anti-windup
-    pid.integral += error;
-    if (pid.integral > INTEGRAL_LIMIT)  pid.integral = INTEGRAL_LIMIT;
-    if (pid.integral < -INTEGRAL_LIMIT) pid.integral = -INTEGRAL_LIMIT;
-
-    // Derivative
+    // Derivative (compute before integral update)
     float derivative = error - pid.prev_error;
     pid.prev_error = error;
 
-    // Feedforward: estimate PWM from target speed
-    float ff_ratio = pid.target / (float)MAX_TICKS_PER_INTERVAL;
+    // Per-motor feedforward: use THIS motor's calibrated max ticks
+    float ff_ratio = pid.target / (float)motor_max_ticks;
     int feedforward = (int)(ff_ratio * 255.0f);
 
-    // PID correction on top of feedforward
-    float correction = KP * error + KI * pid.integral + KD * derivative;
+    // Tentative integral (before anti-windup check)
+    float new_integral = pid.integral + error;
+    if (new_integral > INTEGRAL_LIMIT)  new_integral = INTEGRAL_LIMIT;
+    if (new_integral < -INTEGRAL_LIMIT) new_integral = -INTEGRAL_LIMIT;
 
+    // Compute output with tentative integral
+    float correction = KP * error + KI * new_integral + KD * derivative;
+    int raw_output = feedforward + (int)correction;
+
+    // ANTI-WINDUP: only commit integral if output isn't saturated,
+    // or if error is reducing integral magnitude
+    if ((raw_output <= 255 && raw_output >= -255) ||
+        (error < 0 && pid.integral > 0) ||
+        (error > 0 && pid.integral < 0)) {
+        pid.integral = new_integral;
+    }
+
+    // Recompute with actual integral
+    correction = KP * error + KI * pid.integral + KD * derivative;
     pid.output_pwm = feedforward + (int)correction;
 
     // Clamp to valid PWM range
     if (pid.output_pwm > 255)  pid.output_pwm = 255;
     if (pid.output_pwm < -255) pid.output_pwm = -255;
 
-    // Dead-zone compensation: if output is non-zero but below minimum,
-    // boost to minimum PWM so the motor actually spins
+    // Dead-zone compensation
     if (pid.output_pwm > 0 && pid.output_pwm < MIN_PWM) pid.output_pwm = MIN_PWM;
     if (pid.output_pwm < 0 && pid.output_pwm > -MIN_PWM) pid.output_pwm = -MIN_PWM;
 
@@ -270,9 +308,9 @@ void updatePID() {
     prev_left_ticks  = l;
     prev_right_ticks = r;
 
-    // Update PID for each motor
-    updateMotorPID(left_pid,  delta_left,  LEFT_ENA,  LEFT_IN1,  LEFT_IN2);
-    updateMotorPID(right_pid, delta_right, RIGHT_ENB, RIGHT_IN3, RIGHT_IN4);
+    // Update PID for each motor (with per-motor feedforward calibration)
+    updateMotorPID(left_pid,  delta_left,  LEFT_MAX_TICKS,  LEFT_ENA,  LEFT_IN1,  LEFT_IN2);
+    updateMotorPID(right_pid, delta_right, RIGHT_MAX_TICKS, RIGHT_ENB, RIGHT_IN3, RIGHT_IN4);
 
     // Debug output: print PID internals when enabled
     if (debug_countdown > 0) {
@@ -307,9 +345,9 @@ void processCommand(const char* cmd) {
         if (sscanf(cmd + 1, "%d %d", &left_pwm, &right_pwm) == 2) {
             left_pwm  = constrain(left_pwm,  -255, 255);
             right_pwm = constrain(right_pwm, -255, 255);
-            // Convert command to target ticks per interval
-            left_pid.target  = (left_pwm  / 255.0f) * MAX_TICKS_PER_INTERVAL;
-            right_pid.target = (right_pwm / 255.0f) * MAX_TICKS_PER_INTERVAL;
+            // Set commanded target — actual target will ramp toward this
+            left_pid.cmd_target  = (left_pwm  / 255.0f) * MAX_TICKS_PER_INTERVAL;
+            right_pid.cmd_target = (right_pwm / 255.0f) * MAX_TICKS_PER_INTERVAL;
             last_cmd_time = millis();
         }
     } else if (cmd[0] == 'r') {

@@ -132,6 +132,10 @@ class DiffDriveNode(Node):
         self.last_cmd_time = self.get_clock().now()
         self.cmd_timeout = 0.5  # seconds
 
+        # Store last motor command for continuous resending
+        self.last_left_pwm = 0
+        self.last_right_pwm = 0
+
         self.get_logger().info(
             f'DiffDriveNode started: port={self.serial_port}, '
             f'wheel_sep={self.wheel_sep}, wheel_rad={self.wheel_rad}, '
@@ -174,6 +178,9 @@ class DiffDriveNode(Node):
         left_pwm = max(-255, min(255, left_pwm))
         right_pwm = max(-255, min(255, right_pwm))
 
+        # Store and send
+        self.last_left_pwm = left_pwm
+        self.last_right_pwm = right_pwm
         self.send_motor_command(left_pwm, right_pwm)
 
     def send_motor_command(self, left_pwm, right_pwm):
@@ -218,10 +225,16 @@ class DiffDriveNode(Node):
         """Main update loop: read encoders, compute odometry, publish."""
         now = self.get_clock().now()
 
-        # Watchdog: stop motors if cmd_vel timeout
+        # Watchdog: stop motors if cmd_vel timeout, otherwise resend last command
+        # Continuous resending prevents Arduino firmware timeout and keeps PID stable
         dt_cmd = (now - self.last_cmd_time).nanoseconds / 1e9
         if dt_cmd > self.cmd_timeout:
+            self.last_left_pwm = 0
+            self.last_right_pwm = 0
             self.send_motor_command(0, 0)
+        else:
+            # Resend last command at 20Hz to keep Arduino PID continuously active
+            self.send_motor_command(self.last_left_pwm, self.last_right_pwm)
 
         # Read encoders
         enc_data = self.read_encoder_data()
