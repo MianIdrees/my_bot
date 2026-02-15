@@ -5,10 +5,10 @@
     RPLidar C1 — Real Hardware Link/Joint
 
     Physical placement on Daniel's robot:
-      - 106 mm from rear edge of chassis (toward front)
+      - Near the rear edge of the chassis (x=0.04 in chassis frame)
       - Centered laterally (y = 0)
-      - Mounted on top of chassis, ~0.10m above base_link
-      - Relative to chassis link origin (at rear edge): x=0.106, y=0, z=0.10
+      - Mounted on a wooden riser above the chassis, ~0.10m above base_link
+      - Relative to chassis link origin (at rear edge): x=0.04, y=0, z=0.10
 
     The real RPLidar C1 publishes /scan via rplidar_ros driver node.
     No Gazebo sensor plugin needed.
@@ -17,7 +17,7 @@
   <joint name="laser_joint" type="fixed">
     <parent link="chassis"/>
     <child link="laser_frame"/>
-    <origin xyz="0.106 0 0.10" rpy="0 0 0"/>
+    <origin xyz="0.04 0 0.10" rpy="0 0 0"/>
   </joint>
 
   <link name="laser_frame">

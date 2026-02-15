@@ -22,7 +22,7 @@
 
       Drive axle: 147 mm from rear edge
       Caster:     190 mm forward of drive axle
-      LiDAR:      106 mm from rear edge, centered laterally
+      LiDAR:      Near rear edge (x=0.04 in chassis frame), centered laterally
 
       Coordinate convention:
         base_link at drive axle center, X-forward, Z-up
@@ -133,6 +133,45 @@
         </visual>
     </link>
 
+    <!-- ==================== MOTOR HOUSINGS ==================== -->
+    <!--
+      DC motor cylinders between support posts and wheels.
+      Oriented along Y axis (perpendicular to chassis).
+      Radius ~14mm, length ~40mm — bridges from support post to wheel.
+      Centered at wheel X position, between post and wheel in Y.
+    -->
+    <!-- Left motor -->
+    <joint name="left_motor_joint" type="fixed">
+        <parent link="chassis"/>
+        <child link="left_motor"/>
+        <origin xyz="0.147 0.065 0" rpy="0 0 0"/>
+    </joint>
+    <link name="left_motor">
+        <visual>
+            <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
+            <geometry>
+                <cylinder radius="0.014" length="0.040"/>
+            </geometry>
+            <material name="dark_grey"/>
+        </visual>
+    </link>
+
+    <!-- Right motor -->
+    <joint name="right_motor_joint" type="fixed">
+        <parent link="chassis"/>
+        <child link="right_motor"/>
+        <origin xyz="0.147 -0.065 0" rpy="0 0 0"/>
+    </joint>
+    <link name="right_motor">
+        <visual>
+            <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
+            <geometry>
+                <cylinder radius="0.014" length="0.040"/>
+            </geometry>
+            <material name="dark_grey"/>
+        </visual>
+    </link>
+
     <!-- ==================== LEFT WHEEL ==================== -->
     <!--
       Center-to-center wheel separation: 0.181 m
@@ -190,6 +229,27 @@
         </xacro:inertial_cylinder>
     </link>
 
+    <!-- ==================== CASTER MOUNT BRACKET ==================== -->
+    <!--
+      Vertical bracket connecting chassis bottom (z=0.035) to caster area.
+      Fills the visual gap between the chassis plate and the caster ball.
+      Height: 40mm, from z=-0.005 to z=0.035 (chassis bottom).
+    -->
+    <joint name="caster_mount_joint" type="fixed">
+        <parent link="chassis"/>
+        <child link="caster_mount"/>
+        <origin xyz="0.337 0 0.015" rpy="0 0 0"/>
+    </joint>
+    <link name="caster_mount">
+        <visual>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <geometry>
+                <box size="0.020 0.015 0.040"/>
+            </geometry>
+            <material name="silver"/>
+        </visual>
+    </link>
+
     <!-- ==================== CASTER WHEEL ==================== -->
     <!--
       Passive front caster, 190 mm forward of drive axle.
@@ -216,6 +276,28 @@
         <xacro:inertial_sphere mass="0.05" radius="0.015">
             <origin xyz="0 0 0" rpy="0 0 0"/>
         </xacro:inertial_sphere>
+    </link>
+
+    <!-- ==================== LIDAR RISER POST ==================== -->
+    <!--
+      Wooden post supporting the LiDAR above the chassis.
+      Fills the gap between chassis top (z=0.055) and LiDAR bottom (z=0.08).
+      Height: 25mm, centered at z=0.0675.
+      Placed near the rear edge of the chassis (x=0.04 in chassis frame).
+    -->
+    <joint name="lidar_riser_joint" type="fixed">
+        <parent link="chassis"/>
+        <child link="lidar_riser"/>
+        <origin xyz="0.04 0 0.0675" rpy="0 0 0"/>
+    </joint>
+    <link name="lidar_riser">
+        <visual>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <geometry>
+                <box size="0.040 0.040 0.025"/>
+            </geometry>
+            <material name="wood"/>
+        </visual>
     </link>
 
 </robot>

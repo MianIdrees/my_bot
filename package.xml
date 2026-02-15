@@ -17,6 +17,7 @@
   <exec_depend>navigation2</exec_depend>
   <exec_depend>nav2_bringup</exec_depend>
   <exec_depend>nav2_common</exec_depend>
+  <exec_depend>nav2_lifecycle_manager</exec_depend>
 
   <!-- Real hardware dependencies -->
   <exec_depend>rplidar_ros</exec_depend>

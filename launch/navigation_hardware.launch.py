@@ -120,6 +120,10 @@ def generate_launch_description():
 
     # =====================================================================
     # Navigation (controller, planner, behaviors, smoother, bt_navigator)
+    # Jazzy Nav2 pipeline:
+    #   controller_server → /cmd_vel_nav
+    #     → velocity_smoother → /cmd_vel_smoothed
+    #       → collision_monitor → /cmd_vel
     # =====================================================================
     navigation_nodes = GroupAction(
         actions=[
@@ -131,7 +135,7 @@ def generate_launch_description():
                 name='controller_server',
                 output='screen',
                 parameters=[configured_params],
-                remappings=[('cmd_vel', 'cmd_vel')],
+                remappings=[('cmd_vel', 'cmd_vel_nav')],
             ),
 
             Node(
@@ -175,6 +179,26 @@ def generate_launch_description():
             ),
 
             Node(
+                package='nav2_velocity_smoother',
+                executable='velocity_smoother',
+                name='velocity_smoother',
+                output='screen',
+                parameters=[configured_params],
+                remappings=[
+                    ('cmd_vel', 'cmd_vel_nav'),
+                    ('cmd_vel_smoothed', 'cmd_vel_smoothed'),
+                ],
+            ),
+
+            Node(
+                package='nav2_collision_monitor',
+                executable='collision_monitor',
+                name='collision_monitor',
+                output='screen',
+                parameters=[configured_params],
+            ),
+
+            Node(
                 package='nav2_lifecycle_manager',
                 executable='lifecycle_manager',
                 name='lifecycle_manager_navigation',
@@ -188,6 +212,8 @@ def generate_launch_description():
                         'behavior_server',
                         'bt_navigator',
                         'waypoint_follower',
+                        'velocity_smoother',
+                        'collision_monitor',
                     ]},
                 ],
             ),
