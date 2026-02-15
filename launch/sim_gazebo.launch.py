@@ -5,8 +5,7 @@ Starts:
   1. Gazebo Harmonic (gz-sim) with a selected world
   2. Robot State Publisher (sim URDF with Gazebo plugins)
   3. Spawns the robot model into Gazebo
-  4. ros_gz_bridge to bridge /scan (gpu_lidar → LaserScan)
-  5. ros2_control controllers (diff_cont + joint_broad)
+  4. ros_gz_bridge for /cmd_vel, /odom, /scan, /tf, /joint_states, /clock
 
 Usage:
   ros2 launch my_bot sim_gazebo.launch.py
@@ -20,13 +19,8 @@ from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument,
-    IncludeLaunchDescription,
     ExecuteProcess,
-    RegisterEventHandler,
-    TimerAction,
 )
-from launch.event_handlers import OnProcessStart
-from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
 
@@ -91,37 +85,24 @@ def generate_launch_description():
     )
 
     # --- 5. Bridge: Gazebo topics ↔ ROS 2 topics ---
-    # Bridge the gpu_lidar sensor from Gazebo to ROS /scan
-    # Bridge /clock for use_sim_time
     bridge = Node(
         package='ros_gz_bridge',
         executable='parameter_bridge',
         arguments=[
+            # Teleop commands: ROS → Gazebo  (] = ROS-to-Gazebo direction)
+            '/cmd_vel@geometry_msgs/msg/Twist]gz.msgs.Twist',
+            # Odometry: Gazebo → ROS  ([ = Gazebo-to-ROS direction)
+            '/odom@nav_msgs/msg/Odometry[gz.msgs.Odometry',
+            # LiDAR scan: Gazebo → ROS
             '/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan',
+            # TF (odom→base_link from DiffDrive): Gazebo → ROS
+            '/tf@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V',
+            # Joint states (wheel positions): Gazebo → ROS
+            '/joint_states@sensor_msgs/msg/JointState[gz.msgs.Model',
+            # Clock for use_sim_time: Gazebo → ROS
             '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
         ],
         output='screen',
-    )
-
-    # --- 6. Spawn ros2_control controllers (after robot is loaded) ---
-    diff_drive_spawner = Node(
-        package='controller_manager',
-        executable='spawner',
-        arguments=['diff_cont'],
-        output='screen',
-    )
-
-    joint_broad_spawner = Node(
-        package='controller_manager',
-        executable='spawner',
-        arguments=['joint_broad'],
-        output='screen',
-    )
-
-    # Delay controller spawning to ensure Gazebo + ros2_control plugin is ready
-    delayed_controllers = TimerAction(
-        period=5.0,
-        actions=[diff_drive_spawner, joint_broad_spawner],
     )
 
     return LaunchDescription([
@@ -131,5 +112,4 @@ def generate_launch_description():
         gz_gui,
         spawn_robot,
         bridge,
-        delayed_controllers,
     ])

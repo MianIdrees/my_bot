@@ -36,8 +36,7 @@ ros2 launch my_bot sim_slam.launch.py world:=simple_room.sdf
 Teleoperate the robot to build a map:
 
 ```bash
-ros2 run teleop_twist_keyboard teleop_twist_keyboard \
-  --ros-args -r /cmd_vel:=/diff_cont/cmd_vel_unstamped
+ros2 run teleop_twist_keyboard teleop_twist_keyboard
 ```
 
 Save the map:

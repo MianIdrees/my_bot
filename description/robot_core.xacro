@@ -282,12 +282,13 @@
     <!--
       Wooden post supporting the LiDAR above the chassis.
       Fills the gap between chassis top (z=0.055) and LiDAR bottom (z=0.08).
-      Height: 25mm, centered at z=0.0675, at LiDAR x position.
+      Height: 25mm, centered at z=0.0675.
+      Placed near the rear edge of the chassis (x=0.04 in chassis frame).
     -->
     <joint name="lidar_riser_joint" type="fixed">
         <parent link="chassis"/>
         <child link="lidar_riser"/>
-        <origin xyz="0.106 0 0.0675" rpy="0 0 0"/>
+        <origin xyz="0.04 0 0.0675" rpy="0 0 0"/>
     </joint>
     <link name="lidar_riser">
         <visual>
