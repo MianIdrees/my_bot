@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
 """
-diff_drive_node.py — ROS2 Serial Bridge for Arduino Motor Controller
+diff_drive_node.py — ROS2 Serial Bridge for Arduino Leonardo Motor Controller
 
-This node bridges ROS2 and the Arduino Nano motor controller:
-  - Subscribes to /cmd_vel (Twist) → sends PWM commands to Arduino
+This node bridges ROS2 and the Arduino Leonardo motor controller on LattePanda Alpha:
+  - Subscribes to /cmd_vel (Twist) → sends PWM commands to Arduino Leonardo
   - Reads encoder ticks from Arduino → publishes /odom (Odometry) and TF odom→base_link
   - Publishes /joint_states for wheel joint visualization
 
-Differential Drive Kinematics:
-  Robot parameters must match the URDF:
-    wheel_separation = 0.35 m
-    wheel_radius     = 0.05 m
+Hardware: Daniel's Robot — LattePanda Alpha + built-in Arduino Leonardo
+  Motors: 130 RPM 12V DC with quadrature encoders (11 PPR)
+  Wheels: 69mm diameter (0.0345m radius)
+  Wheel separation (center-to-center): 0.181m
+  Gear ratio: ~48:1 → ticks_per_rev ≈ 528
 
+Differential Drive Kinematics:
   Forward kinematics (encoders → odometry):
     v_left  = (delta_left_ticks  / ticks_per_rev) * 2π * wheel_radius / dt
     v_right = (delta_right_ticks / ticks_per_rev) * 2π * wheel_radius / dt
@@ -23,10 +25,10 @@ Differential Drive Kinematics:
     v_right = v + ω * wheel_separation / 2
     PWM proportional to velocity (with configurable scaling)
 
-Serial Protocol:
+Serial Protocol (USB CDC, 115200 baud):
   TX to Arduino:  m <left_pwm> <right_pwm>\n
   RX from Arduino: e <left_ticks> <right_ticks>\n
-"""
+"
 
 import math
 import time
@@ -61,10 +63,10 @@ class DiffDriveNode(Node):
         # ========================== PARAMETERS ==========================
         self.declare_parameter('serial_port', '/dev/arduino')
         self.declare_parameter('baud_rate', 115200)
-        self.declare_parameter('wheel_separation', 0.35)
-        self.declare_parameter('wheel_radius', 0.0325)   # 65mm wheels
-        self.declare_parameter('ticks_per_rev', 990.0)    # JGB37-520: 11 PPR × 90:1 gear
-        self.declare_parameter('max_motor_speed', 0.37)   # ~110 RPM × π × 0.065m
+        self.declare_parameter('wheel_separation', 0.181)  # Center-to-center: 181mm
+        self.declare_parameter('wheel_radius', 0.0345)     # 69mm wheels
+        self.declare_parameter('ticks_per_rev', 528.0)     # 11 PPR × 48:1 gear (CALIBRATE)
+        self.declare_parameter('max_motor_speed', 0.47)    # ~130 RPM × π × 0.069m
         self.declare_parameter('odom_frame', 'odom')
         self.declare_parameter('base_frame', 'base_link')
         self.declare_parameter('publish_tf', True)

@@ -2,21 +2,28 @@
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
 
   <!--
-    Lidar link/joint for real hardware.
-    Same physical placement as simulation, but NO Gazebo sensor plugin.
-    The real RPLidar C1 publishes /scan via rplidar_ros driver.
+    RPLidar C1 — Real Hardware Link/Joint
+
+    Physical placement on Daniel's robot:
+      - 106 mm from rear edge of chassis (toward front)
+      - Centered laterally (y = 0)
+      - Mounted on top of chassis, ~0.10m above base_link
+      - Relative to chassis link origin (at rear edge): x=0.106, y=0, z=0.10
+
+    The real RPLidar C1 publishes /scan via rplidar_ros driver node.
+    No Gazebo sensor plugin needed.
   -->
 
   <joint name="laser_joint" type="fixed">
     <parent link="chassis"/>
     <child link="laser_frame"/>
-    <origin xyz="0.1 0 0.175" rpy="0 0 0"/>
+    <origin xyz="0.106 0 0.10" rpy="0 0 0"/>
   </joint>
 
   <link name="laser_frame">
     <visual>
       <geometry>
-        <cylinder length="0.04" radius="0.05"/>
+        <cylinder length="0.04" radius="0.035"/>
       </geometry>
       <material name="red">
         <color rgba="1 0 0 1"/>
@@ -24,14 +31,14 @@
     </visual>
     <collision>
       <geometry>
-        <cylinder length="0.04" radius="0.05"/>
+        <cylinder length="0.04" radius="0.035"/>
       </geometry>
     </collision>
-    <xacro:inertial_cylinder mass="0.1" length="0.04" radius="0.05">
+    <xacro:inertial_cylinder mass="0.15" length="0.04" radius="0.035">
       <origin xyz="0 0 0" rpy="0 0 0"/>
     </xacro:inertial_cylinder>
   </link>
 
-  <!-- No Gazebo sensor plugin — real RPLidar provides /scan topic -->
+  <!-- No Gazebo sensor plugin — real RPLidar C1 provides /scan topic -->
 
 </robot>

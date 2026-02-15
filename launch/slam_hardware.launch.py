@@ -9,7 +9,7 @@ Launches SLAM Toolbox configured for real robot:
 Prerequisites:
   ros2 launch my_bot bringup_hardware.launch.py
 
-Usage (on Orange Pi 5):
+Usage (on LattePanda Alpha):
   ros2 launch my_bot slam_hardware.launch.py
 """
 

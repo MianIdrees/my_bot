@@ -1,18 +1,23 @@
 """
-bringup_hardware.launch.py — Full Robot Bringup on Real Hardware (Orange Pi 5)
+bringup_hardware.launch.py — Full Robot Bringup (LattePanda Alpha)
 
 Launches ALL nodes needed for the real robot:
   1. Robot State Publisher (URDF → TF static tree)
   2. RPLidar C1 driver (laser scans → /scan)
-  3. Differential Drive serial node (Arduino bridge → /odom, /joint_states, cmd_vel)
+  3. Differential Drive serial node (Arduino Leonardo bridge → /odom, /joint_states, cmd_vel)
 
-Usage (on Orange Pi 5):
+Hardware: Daniel's robot — LattePanda Alpha + built-in Arduino Leonardo
+  Motors: 130 RPM 12V DC with quadrature encoders (11 PPR, ~48:1 gear)
+  Wheels: 69mm diameter, 181mm center-to-center separation
+  LiDAR:  RPLidar C1 via USB
+
+Usage (on LattePanda Alpha):
   ros2 launch my_bot bringup_hardware.launch.py
 
 Optional arguments:
   lidar_port:=/dev/rplidar      Serial port for RPLidar
-  arduino_port:=/dev/arduino    Serial port for Arduino Uno
-  ticks_per_rev:=990.0          JGB37-520 encoder ticks per wheel revolution (11 PPR × 90:1)
+  arduino_port:=/dev/arduino    Serial port for Arduino Leonardo
+  ticks_per_rev:=528.0          Encoder ticks per wheel revolution (11 PPR × 48:1)
 """
 
 import os
@@ -36,11 +41,11 @@ def generate_launch_description():
     )
     arduino_port_arg = DeclareLaunchArgument(
         'arduino_port', default_value='/dev/arduino',
-        description='Serial port for Arduino Nano motor controller',
+        description='Serial port for Arduino Leonardo (built-in on LattePanda)',
     )
     ticks_per_rev_arg = DeclareLaunchArgument(
-        'ticks_per_rev', default_value='990.0',
-        description='JGB37-520 encoder ticks per full wheel revolution (11 PPR x 90:1 gear)',
+        'ticks_per_rev', default_value='528.0',
+        description='Encoder ticks per full wheel revolution (11 PPR x 48:1 gear)',
     )
 
     # ========================== ROBOT STATE PUBLISHER ==========================
@@ -69,7 +74,7 @@ def generate_launch_description():
         }],
     )
 
-    # ========================== DIFF DRIVE (Arduino Bridge) ==========================
+    # ========================== DIFF DRIVE (Arduino Leonardo Bridge) ==========================
 
     diff_drive_node = Node(
         package='my_bot',
@@ -79,10 +84,10 @@ def generate_launch_description():
         parameters=[{
             'serial_port': LaunchConfiguration('arduino_port'),
             'baud_rate': 115200,
-            'wheel_separation': 0.35,
-            'wheel_radius': 0.0325,
+            'wheel_separation': 0.181,     # Center-to-center: 181mm
+            'wheel_radius': 0.0345,        # 69mm wheels
             'ticks_per_rev': LaunchConfiguration('ticks_per_rev'),
-            'max_motor_speed': 0.37,
+            'max_motor_speed': 0.47,       # 130 RPM × π × 0.069m
             'odom_frame': 'odom',
             'base_frame': 'base_link',
             'publish_tf': True,

@@ -4,7 +4,7 @@ rsp_hardware.launch.py — Robot State Publisher for Real Hardware
 Publishes the robot URDF (hardware version, no Gazebo plugins)
 as /robot_description and broadcasts the static TF tree.
 
-Usage (on Orange Pi 5):
+Usage (on LattePanda Alpha):
   ros2 launch my_bot rsp_hardware.launch.py
 """
 

@@ -1,10 +1,9 @@
 # =============================================================================
-# SLAM Toolbox Parameters — Real Hardware (Orange Pi 5 + RPLidar C1)
+# SLAM Toolbox Parameters — Real Hardware (LattePanda Alpha + RPLidar C1)
 # =============================================================================
-# Key differences from simulation config:
-#   - use_sim_time: false
-#   - Reduced max_laser_range for RPLidar C1 (8m practical indoor)
-#   - Tuned for real-world noise and slower compute
+# Robot: Daniel's differential drive (130 RPM motors, 69mm wheels)
+# Computer: LattePanda Alpha (Core i5) — faster than Orange Pi 5
+# LiDAR: RPLidar C1 (USB)
 # =============================================================================
 
 slam_toolbox:
@@ -69,11 +68,11 @@ slam_toolbox:
     coarse_search_angle_offset: 0.349
     coarse_angle_resolution: 0.0349
 
-    # Performance tuning for Orange Pi 5
+    # Performance tuning for LattePanda Alpha (Core i5)
     throttle_scans: 1
-    transform_publish_period: 0.05   # 20 Hz TF publish
+    transform_publish_period: 0.04   # 25 Hz TF publish (more CPU available)
 
-    map_update_interval: 5.0
+    map_update_interval: 3.0         # Faster map updates
     enable_interactive_mode: true
 
     stack_size_to_use: 40000000

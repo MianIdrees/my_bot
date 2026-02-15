@@ -11,7 +11,7 @@ Prerequisites:
   2. Have a saved map (run SLAM first, then save with:
      ros2 run nav2_map_server map_saver_cli -f ~/maps/my_map)
 
-Usage (on Orange Pi 5):
+Usage (on LattePanda Alpha):
   ros2 launch my_bot navigation_hardware.launch.py map:=/path/to/map.yaml
 
 Then on DESKTOP:
