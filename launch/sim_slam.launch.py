@@ -49,7 +49,9 @@ def generate_launch_description():
 
     # --- 2. SLAM Toolbox (online async, sim config) ---
     # Delayed by 5 seconds to ensure Gazebo /clock and TF are ready.
-    # Without this delay, SLAM starts with time=0 and all TF lookups fail.
+    # async_slam_toolbox_node is a lifecycle node in ROS 2 Jazzy — it must
+    # be configured and activated before it subscribes to /scan or publishes
+    # the map.  The lifecycle_manager below handles this automatically.
     slam_toolbox = Node(
         package='slam_toolbox',
         executable='async_slam_toolbox_node',
@@ -66,7 +68,28 @@ def generate_launch_description():
         actions=[slam_toolbox],
     )
 
-    # --- 3. RViz for visualization ---
+    # --- 3. Lifecycle manager — auto-configure + activate SLAM ---
+    # Without this, SLAM stays in "unconfigured" state and never subscribes
+    # to /scan or publishes /map.
+    lifecycle_manager = Node(
+        package='nav2_lifecycle_manager',
+        executable='lifecycle_manager',
+        name='lifecycle_manager_slam',
+        output='screen',
+        parameters=[{
+            'use_sim_time': True,
+            'autostart': True,
+            'bond_timeout': 0.0,
+            'node_names': ['slam_toolbox'],
+        }],
+    )
+
+    delayed_lifecycle = TimerAction(
+        period=7.0,
+        actions=[lifecycle_manager],
+    )
+
+    # --- 4. RViz for visualization ---
     rviz_config = os.path.join(pkg_path, 'config', 'nav2_view.rviz')
     rviz = Node(
         package='rviz2',
@@ -86,5 +109,6 @@ def generate_launch_description():
         world_arg,
         sim_gazebo,
         delayed_slam,
+        delayed_lifecycle,
         delayed_rviz,
     ])
