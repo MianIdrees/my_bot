@@ -1,0 +1,86 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!--
+    RPLidar C1 — Simulation Version (Gazebo Harmonic GPU LiDAR)
+
+    Physical placement identical to hardware:
+      - 106 mm from rear edge of chassis (toward front)
+      - Centered laterally (y = 0)
+      - Mounted on top of chassis, ~0.10m above base_link
+      - Relative to chassis link origin (at rear edge): x=0.106, y=0, z=0.10
+
+    Simulated using Gazebo gpu_lidar sensor, bridged to ROS /scan via ros_gz_bridge.
+    RPLidar C1 specifications:
+      - Range: 0.15 m to 8.0 m
+      - 360° scan
+      - ~4000 samples per revolution
+      - Scan rate: ~10 Hz
+  -->
+
+  <joint name="laser_joint" type="fixed">
+    <parent link="chassis"/>
+    <child link="laser_frame"/>
+    <origin xyz="0.106 0 0.10" rpy="0 0 0"/>
+  </joint>
+
+  <link name="laser_frame">
+    <visual>
+      <geometry>
+        <cylinder length="0.04" radius="0.035"/>
+      </geometry>
+      <material name="red">
+        <color rgba="1 0 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.04" radius="0.035"/>
+      </geometry>
+    </collision>
+    <xacro:inertial_cylinder mass="0.15" length="0.04" radius="0.035">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+    </xacro:inertial_cylinder>
+  </link>
+
+  <gazebo reference="laser_frame">
+    <material>
+      <ambient>1 0 0 1</ambient>
+      <diffuse>1 0 0 1</diffuse>
+    </material>
+    <sensor name="gpu_lidar" type="gpu_lidar">
+      <topic>scan</topic>
+      <update_rate>10</update_rate>
+      <gz_frame_id>laser_frame</gz_frame_id>
+      <lidar>
+        <scan>
+          <horizontal>
+            <samples>720</samples>
+            <resolution>1</resolution>
+            <min_angle>-3.14159</min_angle>
+            <max_angle>3.14159</max_angle>
+          </horizontal>
+          <vertical>
+            <samples>1</samples>
+            <resolution>1</resolution>
+            <min_angle>0</min_angle>
+            <max_angle>0</max_angle>
+          </vertical>
+        </scan>
+        <range>
+          <min>0.15</min>
+          <max>8.0</max>
+          <resolution>0.01</resolution>
+        </range>
+        <noise>
+          <type>gaussian</type>
+          <mean>0.0</mean>
+          <stddev>0.005</stddev>
+        </noise>
+      </lidar>
+      <always_on>true</always_on>
+      <visualize>true</visualize>
+    </sensor>
+  </gazebo>
+
+</robot>

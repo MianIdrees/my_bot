@@ -1,14 +1,13 @@
 # =============================================================================
-# SLAM Toolbox Parameters — Real Hardware (LattePanda Alpha + RPLidar C1)
+# SLAM Toolbox Parameters — Gazebo Simulation
 # =============================================================================
-# Robot: Daniel's differential drive (130 RPM motors, 69mm wheels)
-# Computer: LattePanda Alpha (Core i5) — faster than Orange Pi 5
-# LiDAR: RPLidar C1 (USB)
+# Robot: Daniel's differential drive (same dimensions as hardware)
+# Simulated RPLidar C1: 720 samples, 10 Hz, range 0.15–8.0 m
 # =============================================================================
 
 slam_toolbox:
   ros__parameters:
-    use_sim_time: false
+    use_sim_time: true
 
     # Frame configuration
     odom_frame: odom
@@ -27,15 +26,15 @@ slam_toolbox:
 
     # Map resolution
     resolution: 0.05
-    max_laser_range: 8.0        # RPLidar C1 practical indoor range
+    max_laser_range: 8.0
     minimum_time_interval: 0.5
-    transform_timeout: 0.5      # Increased for real hardware latency
+    transform_timeout: 0.5
     tf_buffer_duration: 30.0
 
     # Scan matching
     use_scan_matching: true
     use_scan_barycenter: true
-    minimum_travel_distance: 0.3   # Build map with less movement needed
+    minimum_travel_distance: 0.3
     minimum_travel_heading: 0.3
 
     # Scan buffer
@@ -68,11 +67,11 @@ slam_toolbox:
     coarse_search_angle_offset: 0.349
     coarse_angle_resolution: 0.0349
 
-    # Performance tuning for LattePanda Alpha (Core i5)
+    # Performance tuning
     throttle_scans: 1
-    transform_publish_period: 0.04   # 25 Hz TF publish (more CPU available)
+    transform_publish_period: 0.04   # 25 Hz TF publish
 
-    map_update_interval: 3.0         # Faster map updates
+    map_update_interval: 3.0
     enable_interactive_mode: true
 
     stack_size_to_use: 40000000

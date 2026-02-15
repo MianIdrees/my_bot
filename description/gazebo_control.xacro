@@ -1,0 +1,85 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!--
+    Gazebo Harmonic (gz-sim) ros2_control integration
+
+    Uses gz_ros2_control plugin to drive the DiffDriveController
+    defined in my_controllers.yaml through Gazebo simulation.
+  -->
+
+  <ros2_control name="GazeboSimSystem" type="system">
+    <hardware>
+      <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+    </hardware>
+    <joint name="left_wheel_joint">
+      <command_interface name="velocity">
+        <param name="min">-10</param>
+        <param name="max">10</param>
+      </command_interface>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="right_wheel_joint">
+      <command_interface name="velocity">
+        <param name="min">-10</param>
+        <param name="max">10</param>
+      </command_interface>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+  </ros2_control>
+
+  <gazebo>
+    <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+      <parameters>$(find my_bot)/config/my_controllers.yaml</parameters>
+    </plugin>
+  </gazebo>
+
+  <!-- ==================== GAZEBO MATERIAL COLORS ==================== -->
+  <gazebo reference="chassis">
+    <material>
+      <ambient>0.76 0.60 0.42 1</ambient>
+      <diffuse>0.76 0.60 0.42 1</diffuse>
+    </material>
+  </gazebo>
+
+  <gazebo reference="left_wheel">
+    <material>
+      <ambient>0.2 0.2 0.2 1</ambient>
+      <diffuse>0.2 0.2 0.2 1</diffuse>
+    </material>
+  </gazebo>
+
+  <gazebo reference="right_wheel">
+    <material>
+      <ambient>0.2 0.2 0.2 1</ambient>
+      <diffuse>0.2 0.2 0.2 1</diffuse>
+    </material>
+  </gazebo>
+
+  <gazebo reference="left_support">
+    <material>
+      <ambient>0.76 0.60 0.42 1</ambient>
+      <diffuse>0.76 0.60 0.42 1</diffuse>
+    </material>
+  </gazebo>
+
+  <gazebo reference="right_support">
+    <material>
+      <ambient>0.76 0.60 0.42 1</ambient>
+      <diffuse>0.76 0.60 0.42 1</diffuse>
+    </material>
+  </gazebo>
+
+  <!-- Caster wheel: low friction for free rolling -->
+  <gazebo reference="caster_wheel">
+    <material>
+      <ambient>0.75 0.75 0.75 1</ambient>
+      <diffuse>0.75 0.75 0.75 1</diffuse>
+    </material>
+    <mu1>0.001</mu1>
+    <mu2>0.001</mu2>
+  </gazebo>
+
+</robot>

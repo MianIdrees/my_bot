@@ -33,14 +33,8 @@ if(BUILD_TESTING)
 endif()
 
 install(
-  DIRECTORY config description launch firmware
+  DIRECTORY config description launch worlds
   DESTINATION share/${PROJECT_NAME}
-)
-
-install(
-  PROGRAMS
-    scripts/diff_drive_node.py
-  DESTINATION lib/${PROJECT_NAME}
 )
 
 ament_package()
