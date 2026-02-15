@@ -57,6 +57,8 @@ def generate_launch_description():
     )
 
     # --- 2. Nav2 bringup (full navigation stack) ---
+    # Nav2 controller_server → /cmd_vel_nav → velocity_smoother → /cmd_vel_smoothed
+    # Gazebo DiffDrive plugin listens on /cmd_vel, so we relay below.
     nav2_bringup = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(nav2_bringup_dir, 'launch', 'bringup_launch.py'),

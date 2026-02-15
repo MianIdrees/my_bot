@@ -49,6 +49,19 @@ ros2 run nav2_map_server map_saver_cli -f ~/my_map
 
 ```bash
 ros2 launch my_bot sim_nav2.launch.py map:=~/my_map.yaml world:=simple_room.sdf
+
+""
+
+# Kill any running simulation
+pkill -f "ros2 launch" ; pkill -f "gz sim" ; pkill -f gzserver
+
+# Launch Nav2 with your saved map
+cd ~/Robot_simulation
+source install/setup.bash
+ros2 launch my_bot sim_nav2.launch.py map:=/home/idrees/Robot_simulation/my_map.yaml world:=simple_room.sdf
+
+""
+
 ```
 
 In RViz:
