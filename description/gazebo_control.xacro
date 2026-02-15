@@ -72,6 +72,34 @@
     </material>
   </gazebo>
 
+  <gazebo reference="left_motor">
+    <material>
+      <ambient>0.2 0.2 0.2 1</ambient>
+      <diffuse>0.2 0.2 0.2 1</diffuse>
+    </material>
+  </gazebo>
+
+  <gazebo reference="right_motor">
+    <material>
+      <ambient>0.2 0.2 0.2 1</ambient>
+      <diffuse>0.2 0.2 0.2 1</diffuse>
+    </material>
+  </gazebo>
+
+  <gazebo reference="caster_mount">
+    <material>
+      <ambient>0.75 0.75 0.75 1</ambient>
+      <diffuse>0.75 0.75 0.75 1</diffuse>
+    </material>
+  </gazebo>
+
+  <gazebo reference="lidar_riser">
+    <material>
+      <ambient>0.76 0.60 0.42 1</ambient>
+      <diffuse>0.76 0.60 0.42 1</diffuse>
+    </material>
+  </gazebo>
+
   <!-- Caster wheel: low friction for free rolling -->
   <gazebo reference="caster_wheel">
     <material>
