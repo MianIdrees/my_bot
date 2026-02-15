@@ -20,7 +20,7 @@ import os
 from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, TimerAction
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
@@ -48,6 +48,8 @@ def generate_launch_description():
     )
 
     # --- 2. SLAM Toolbox (online async, sim config) ---
+    # Delayed by 5 seconds to ensure Gazebo /clock and TF are ready.
+    # Without this delay, SLAM starts with time=0 and all TF lookups fail.
     slam_toolbox = Node(
         package='slam_toolbox',
         executable='async_slam_toolbox_node',
@@ -57,6 +59,11 @@ def generate_launch_description():
             os.path.join(pkg_path, 'config', 'mapper_params_online_async_sim.yaml'),
             {'use_sim_time': True},
         ],
+    )
+
+    delayed_slam = TimerAction(
+        period=5.0,
+        actions=[slam_toolbox],
     )
 
     # --- 3. RViz for visualization ---
@@ -70,9 +77,14 @@ def generate_launch_description():
         parameters=[{'use_sim_time': True}],
     )
 
+    delayed_rviz = TimerAction(
+        period=5.0,
+        actions=[rviz],
+    )
+
     return LaunchDescription([
         world_arg,
         sim_gazebo,
-        slam_toolbox,
-        rviz,
+        delayed_slam,
+        delayed_rviz,
     ])

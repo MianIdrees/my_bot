@@ -5,7 +5,8 @@ Starts:
   1. Gazebo Harmonic (gz-sim) with a selected world
   2. Robot State Publisher (sim URDF with Gazebo plugins)
   3. Spawns the robot model into Gazebo
-  4. ros_gz_bridge for /cmd_vel, /odom, /scan, /tf, /joint_states, /clock
+  4. ros_gz_bridge for /cmd_vel, /odom, /scan, /clock
+  5. odom_to_tf node (converts /odom → odom→base_link TF)
 
 Usage:
   ros2 launch my_bot sim_gazebo.launch.py
@@ -85,24 +86,33 @@ def generate_launch_description():
     )
 
     # --- 5. Bridge: Gazebo topics ↔ ROS 2 topics ---
+    # NOTE: /tf and /joint_states bridges are omitted because
+    #   gz.msgs.Pose_V → tf2_msgs/TFMessage conversion is unreliable.
+    #   The odom_to_tf node below handles odom→base_link TF instead.
     bridge = Node(
         package='ros_gz_bridge',
         executable='parameter_bridge',
         arguments=[
-            # Teleop commands: ROS → Gazebo  (] = ROS-to-Gazebo direction)
+            # Teleop commands: ROS → Gazebo
             '/cmd_vel@geometry_msgs/msg/Twist]gz.msgs.Twist',
-            # Odometry: Gazebo → ROS  ([ = Gazebo-to-ROS direction)
+            # Odometry: Gazebo → ROS (used by odom_to_tf node)
             '/odom@nav_msgs/msg/Odometry[gz.msgs.Odometry',
             # LiDAR scan: Gazebo → ROS
             '/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan',
-            # TF (odom→base_link from DiffDrive): Gazebo → ROS
-            '/tf@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V',
-            # Joint states (wheel positions): Gazebo → ROS
-            '/joint_states@sensor_msgs/msg/JointState[gz.msgs.Model',
             # Clock for use_sim_time: Gazebo → ROS
             '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
         ],
         output='screen',
+    )
+
+    # --- 6. odom→base_link TF from /odom topic ---
+    # More reliable than bridging /tf directly from Gazebo Harmonic
+    odom_to_tf = Node(
+        package='my_bot',
+        executable='odom_to_tf_node.py',
+        name='odom_to_tf',
+        output='screen',
+        parameters=[{'use_sim_time': True}],
     )
 
     return LaunchDescription([
@@ -112,4 +122,5 @@ def generate_launch_description():
         gz_gui,
         spawn_robot,
         bridge,
+        odom_to_tf,
     ])
