@@ -101,6 +101,8 @@ def generate_launch_description():
             '/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan',
             # Clock for use_sim_time: Gazebo → ROS
             '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
+            # Joint states: Gazebo → ROS (for wheel TF in robot_state_publisher)
+            '/joint_states@sensor_msgs/msg/JointState[gz.msgs.Model',
         ],
         output='screen',
     )
