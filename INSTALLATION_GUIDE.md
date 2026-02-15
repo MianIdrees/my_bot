@@ -1,15 +1,15 @@
-# Installation Guide — LattePanda Alpha Robot
+# Installation Guide -- LattePanda Alpha Robot
 
 Complete setup guide for Daniel's differential drive robot running on LattePanda Alpha (Core i5) with built-in Arduino Leonardo.
 
 ---
 
-## 1. Install Ubuntu 22.04 on LattePanda Alpha
+## 1. Install Ubuntu 24.04 on LattePanda Alpha
 
-1. Download **Ubuntu 22.04.x LTS Desktop** ISO from https://releases.ubuntu.com/22.04/
+1. Download **Ubuntu 24.04.x LTS Desktop** ISO from https://releases.ubuntu.com/24.04/
 2. Create a bootable USB drive using [Balena Etcher](https://etcher.balena.io/) or `dd`
 3. Plug USB into LattePanda Alpha, boot from USB (press F7 or Del for boot menu)
-4. Install Ubuntu — select "Erase disk and install Ubuntu"
+4. Install Ubuntu -- select "Erase disk and install Ubuntu"
 5. After install, update the system:
 
 ```bash
@@ -19,7 +19,7 @@ sudo apt install -y curl git build-essential python3-pip
 
 ---
 
-## 2. Install ROS2 Humble
+## 2. Install ROS2 Jazzy
 
 ```bash
 # Add ROS2 GPG key
@@ -33,12 +33,12 @@ echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-a
   http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" \
   | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
 
-# Install ROS2 Humble Desktop
+# Install ROS2 Jazzy Desktop
 sudo apt update
-sudo apt install -y ros-humble-desktop
+sudo apt install -y ros-jazzy-desktop
 
 # Source ROS2 in every terminal
-echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
+echo "source /opt/ros/jazzy/setup.bash" >> ~/.bashrc
 source ~/.bashrc
 ```
 
@@ -48,16 +48,16 @@ source ~/.bashrc
 
 ```bash
 # Navigation
-sudo apt install -y ros-humble-navigation2 ros-humble-nav2-bringup
+sudo apt install -y ros-jazzy-navigation2 ros-jazzy-nav2-bringup
 
 # SLAM
-sudo apt install -y ros-humble-slam-toolbox
-
-# RPLidar driver
-sudo apt install -y ros-humble-rplidar-ros
+sudo apt install -y ros-jazzy-slam-toolbox
 
 # ros2_control (for reference config)
-sudo apt install -y ros-humble-ros2-control ros-humble-ros2-controllers
+sudo apt install -y ros-jazzy-ros2-control ros-jazzy-ros2-controllers
+
+# Teleop keyboard
+sudo apt install -y ros-jazzy-teleop-twist-keyboard
 
 # Build tools
 sudo apt install -y python3-colcon-common-extensions python3-rosdep
@@ -65,6 +65,9 @@ sudo apt install -y python3-colcon-common-extensions python3-rosdep
 # Python serial library (for Arduino communication)
 pip3 install pyserial
 ```
+
+> **Note:** The RPLidar C1 requires `sllidar_ros2` from source (not the apt `rplidar_ros` package).
+> It is cloned in Step 5 below alongside the robot package.
 
 ---
 
@@ -84,10 +87,14 @@ rosdep update
 mkdir -p ~/robot_ws/src
 cd ~/robot_ws/src
 
-# Clone the repository
+# Clone the robot package
 git clone https://github.com/MianIdrees/my_bot.git
 cd my_bot
 git checkout feature/lattepanda-alpha-daniel
+cd ..
+
+# Clone sllidar_ros2 (RPLidar C1 driver -- not available via apt)
+git clone https://github.com/Slamtec/sllidar_ros2.git
 ```
 
 ---
@@ -244,7 +251,7 @@ ls /dev/ttyUSB*
 ### Build errors
 ```bash
 # Make sure ROS2 is sourced
-source /opt/ros/humble/setup.bash
+source /opt/ros/jazzy/setup.bash
 
 # Clean and rebuild
 cd ~/robot_ws

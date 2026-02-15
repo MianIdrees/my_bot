@@ -1,10 +1,10 @@
 # my_bot — Daniel's Robot
 
-Differential drive mobile robot running ROS2 Humble on LattePanda Alpha (Core i5) with built-in Arduino Leonardo. Features autonomous navigation using Nav2, SLAM mapping, and RPLidar C1 laser scanning.
+Differential drive mobile robot running ROS2 Jazzy on LattePanda Alpha (Core i5) with built-in Arduino Leonardo. Features autonomous navigation using Nav2, SLAM mapping, and RPLidar C1 laser scanning.
 
 ## Hardware
 
-- **Computer:** LattePanda Alpha (Core i5) running Ubuntu 22.04 + ROS2 Humble
+- **Computer:** LattePanda Alpha (Core i5) running Ubuntu 24.04 + ROS2 Jazzy
 - **Microcontroller:** Built-in Arduino Leonardo (ATmega32U4)
 - **Motors:** 2× 130 RPM 12V DC motors with quadrature encoders (11 PPR)
 - **Motor Driver:** L298N H-Bridge
@@ -106,10 +106,10 @@ ros2 launch my_bot navigation_hardware.launch.py map:=$HOME/maps/my_map.yaml
 
 ## Dependencies
 
-- ROS2 Humble
+- ROS2 Jazzy
 - `navigation2`, `nav2_bringup`
 - `slam_toolbox`
-- `rplidar_ros`
+- `sllidar_ros2` (RPLidar C1 support)
 - `robot_state_publisher`, `xacro`
 - `pyserial` (Python)
 - Arduino IDE (for firmware upload)

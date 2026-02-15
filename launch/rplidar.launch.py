@@ -37,13 +37,14 @@ def generate_launch_description():
         description='Topic name for the LaserScan output'
     )
 
-    # RPLidar node
-    rplidar_node = Node(
-        package='rplidar_ros',
-        executable='rplidar_composition',
-        name='rplidar_node',
+    # RPLidar C1 node (using sllidar_ros2 for C1 support)
+    lidar_node = Node(
+        package='sllidar_ros2',
+        executable='sllidar_node',
+        name='sllidar_node',
         output='screen',
         parameters=[{
+            'channel_type': 'serial',
             'serial_port': LaunchConfiguration('serial_port'),
             'serial_baudrate': LaunchConfiguration('serial_baudrate'),
             'frame_id': LaunchConfiguration('frame_id'),
@@ -61,5 +62,5 @@ def generate_launch_description():
         frame_id_arg,
         scan_mode_arg,
         topic_name_arg,
-        rplidar_node,
+        lidar_node,
     ])

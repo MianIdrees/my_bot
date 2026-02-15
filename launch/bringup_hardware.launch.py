@@ -59,12 +59,13 @@ def generate_launch_description():
 
     # ========================== RPLIDAR C1 ==========================
 
-    rplidar_node = Node(
-        package='rplidar_ros',
-        executable='rplidar_composition',
-        name='rplidar_node',
+    lidar_node = Node(
+        package='sllidar_ros2',
+        executable='sllidar_node',
+        name='sllidar_node',
         output='screen',
         parameters=[{
+            'channel_type': 'serial',
             'serial_port': LaunchConfiguration('lidar_port'),
             'serial_baudrate': 460800,       # RPLidar C1 default baud rate
             'frame_id': 'laser_frame',
@@ -100,6 +101,6 @@ def generate_launch_description():
         arduino_port_arg,
         ticks_per_rev_arg,
         rsp,
-        rplidar_node,
+        lidar_node,
         diff_drive_node,
     ])

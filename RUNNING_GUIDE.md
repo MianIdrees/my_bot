@@ -1,19 +1,45 @@
-# Running Guide — Daniel's Robot (LattePanda Alpha)
+# Running Guide -- Daniel's Robot (LattePanda Alpha)
 
-Step-by-step guide to bring up the robot, run SLAM mapping, and autonomous navigation with Nav2.
+Step-by-step guide to bring up the robot, run SLAM mapping, teleoperation, and autonomous navigation with Nav2.
+
+> **ROS2 Distro:** Jazzy Jalisco &nbsp;|&nbsp; **OS:** Ubuntu 24.04 &nbsp;|&nbsp; **LiDAR package:** sllidar_ros2 (Slamtec RPLidar C1)
 
 ---
 
 ## Prerequisites
 
-- [x] Ubuntu 22.04 installed on LattePanda Alpha
-- [x] ROS2 Humble installed and sourced
-- [x] Workspace built (`colcon build --symlink-install`)
+- [x] Ubuntu 24.04 installed on LattePanda Alpha
+- [x] ROS2 Jazzy installed and sourced (`source /opt/ros/jazzy/setup.bash`)
+- [x] Workspace built (see Build section below)
 - [x] Arduino Leonardo firmware uploaded (see INSTALLATION_GUIDE.md)
-- [x] udev rules installed
+- [x] udev rules installed (`99-robot-devices.rules`)
 - [x] RPLidar C1 connected via USB
 - [x] L298N + motors + encoders wired correctly
 - [x] 12V battery connected to L298N
+
+---
+
+## Build the Workspace
+
+```bash
+# Source ROS2 Jazzy
+source /opt/ros/jazzy/setup.bash
+
+# Navigate to workspace
+cd ~/robot_ws
+
+# Build all packages (my_bot + sllidar_ros2)
+colcon build --symlink-install
+
+# Source the workspace overlay
+source install/setup.bash
+```
+
+> **Tip:** Add these two source lines to `~/.bashrc` so every new terminal is ready:
+> ```bash
+> echo "source /opt/ros/jazzy/setup.bash" >> ~/.bashrc
+> echo "source ~/robot_ws/install/setup.bash" >> ~/.bashrc
+> ```
 
 ---
 
@@ -21,13 +47,13 @@ Step-by-step guide to bring up the robot, run SLAM mapping, and autonomous navig
 
 ```bash
 # Open Arduino IDE, load firmware/motor_controller.ino
-# Select: Board → Arduino Leonardo, Port → /dev/ttyACM0
+# Select: Board -> Arduino Leonardo, Port -> /dev/ttyACM0
 # Upload
 
 # Quick test via serial monitor (115200 baud):
-#   Send: r        → Should respond: r ok
-#   Send: m 100 100 → Both wheels should spin forward
-#   Send: m 0 0     → Stop
+#   Send: r          -> Should respond: r ok
+#   Send: m 100 100  -> Both wheels should spin forward
+#   Send: m 0 0      -> Stop
 ```
 
 ---
@@ -43,8 +69,9 @@ ls -la /dev/arduino
 ls -la /dev/rplidar
 # Should show symlink to /dev/ttyUSB*
 
-# Quick lidar test
+# Quick lidar test (standalone)
 ros2 launch my_bot rplidar.launch.py serial_port:=/dev/rplidar
+
 # In another terminal:
 ros2 topic echo /scan --once
 # Should show laser scan data
@@ -58,35 +85,44 @@ ros2 topic echo /scan --once
 This starts the core robot: URDF/TF tree, LiDAR, and motor controller.
 
 ```bash
+source ~/robot_ws/install/setup.bash
 ros2 launch my_bot bringup_hardware.launch.py
 ```
 
 **What this launches:**
-- `robot_state_publisher` — publishes URDF and static TF tree
-- `rplidar_node` — publishes `/scan` from RPLidar C1
-- `diff_drive_node` — bridges ROS2 ↔ Arduino Leonardo:
-  - Subscribes to `/cmd_vel` → sends motor commands
-  - Publishes `/odom` (odometry from encoders)
+- `robot_state_publisher` -- publishes URDF and static TF tree
+- `sllidar_node` -- publishes `/scan` from RPLidar C1 (via sllidar_ros2)
+- `diff_drive_node` -- bridges ROS2 and Arduino Leonardo:
+  - Subscribes to `/cmd_vel` and sends motor commands over serial
+  - Publishes `/odom` (odometry from wheel encoders)
   - Publishes `/joint_states` (wheel positions)
-  - Broadcasts TF: `odom → base_link`
+  - Broadcasts TF: `odom -> base_link`
 
 **Verify it's working:**
 ```bash
 # In a new terminal:
+source ~/robot_ws/install/setup.bash
 
-# Check topics are publishing
+# Check all expected topics
 ros2 topic list
 # Should show: /scan, /odom, /cmd_vel, /joint_states, /robot_description, /tf, /tf_static
 
+# Check nodes
+ros2 node list
+# Should show: /robot_state_publisher, /sllidar_node, /diff_drive_node
+
 # Check TF tree
 ros2 run tf2_tools view_frames
-# Should show: map(optional) → odom → base_link → chassis → laser_frame
+# Should show: odom -> base_link -> chassis -> laser_frame
+#                                            -> left_wheel
+#                                            -> right_wheel
+#                                            -> caster_wheel
 
-# Check scan data
+# Check scan rate
 ros2 topic hz /scan
-# Should show ~5-10 Hz
+# Should show ~10 Hz
 
-# Check odometry
+# Check odometry rate
 ros2 topic hz /odom
 # Should show ~20 Hz
 
@@ -102,11 +138,11 @@ ros2 topic pub --once /cmd_vel geometry_msgs/msg/Twist \
 
 ---
 
-## Step 4: Teleoperation (manual driving)
+## Step 4: Teleoperation (keyboard driving)
 
 ```bash
 # Install teleop keyboard (if not already)
-sudo apt install -y ros-humble-teleop-twist-keyboard
+sudo apt install -y ros-jazzy-teleop-twist-keyboard
 
 # Run teleop
 ros2 run teleop_twist_keyboard teleop_twist_keyboard
@@ -118,56 +154,59 @@ Use keys: `i` = forward, `k` = stop, `j` = turn left, `l` = turn right, `,` = ba
 
 ---
 
-## Step 5: SLAM — Build a Map
+## Step 5: SLAM -- Build a Map
 
-With bringup running, start SLAM in a **new terminal**:
+With bringup running (Step 3), start SLAM in a **new terminal**:
 
 ```bash
+source ~/robot_ws/install/setup.bash
 ros2 launch my_bot slam_hardware.launch.py
 ```
 
-**Visualize on the LattePanda or remote PC:**
+**Visualize on the LattePanda or a remote PC:**
 ```bash
-# On the same machine or a remote PC on the same network:
 rviz2 -d ~/robot_ws/src/my_bot/config/nav2_view.rviz
 ```
 
 **In RViz2:**
-- Add display: `Map` → topic: `/map`
-- Add display: `LaserScan` → topic: `/scan`
-- Add display: `TF`
+- The config already includes Map (`/map`), LaserScan (`/scan`), TF, and RobotModel displays
 - You should see the map building as you drive the robot around
 
 **Drive the robot** using teleop (Step 4) to explore the environment.
 
 **Save the map** when done:
 ```bash
-# Save the map to a file
 mkdir -p ~/maps
 ros2 run nav2_map_server map_saver_cli -f ~/maps/my_map
 
 # This creates:
 #   ~/maps/my_map.pgm   (occupancy grid image)
-#   ~/maps/my_map.yaml   (metadata)
+#   ~/maps/my_map.yaml  (metadata)
 ```
 
-Stop SLAM: Ctrl+C
+Stop SLAM: Ctrl+C in the SLAM terminal.
 
 ---
 
 ## Step 6: Autonomous Navigation with Nav2
 
-With bringup still running, launch Nav2 with your saved map:
+With bringup still running (Step 3), launch Nav2 with your saved map:
 
 ```bash
+source ~/robot_ws/install/setup.bash
 ros2 launch my_bot navigation_hardware.launch.py map:=$HOME/maps/my_map.yaml
 ```
 
+Open RViz2 if not already running:
+```bash
+rviz2 -d ~/robot_ws/src/my_bot/config/nav2_view.rviz
+```
+
 **In RViz2:**
-1. Click **"2D Pose Estimate"** — click and drag on the map where the robot currently is
+1. Click **"2D Pose Estimate"** -- click and drag on the map where the robot currently is
    (this initializes AMCL localization)
 2. Wait a few seconds for the particle cloud to converge
-3. Click **"2D Goal Pose"** — click and drag where you want the robot to go
+3. Click **"2D Goal Pose"** -- click and drag where you want the robot to go
 4. The robot should plan a path and navigate autonomously!
 
 ---
@@ -187,15 +226,15 @@ ros2 topic list | grep -E "scan|odom|cmd_vel|map|plan"
 
 # Check TF tree is complete:
 ros2 run tf2_tools view_frames
-# Should show: map → odom → base_link → chassis → laser_frame
-#                                      → left_wheel
-#                                      → right_wheel
+# Should show: map -> odom -> base_link -> chassis -> laser_frame
+#                                       -> left_wheel
+#                                       -> right_wheel
 
 # Check node list:
 ros2 node list
 # Should include:
 #   /robot_state_publisher
-#   /rplidar_node
+#   /sllidar_node
 #   /diff_drive_node
 #   /slam_toolbox (if running SLAM)
 #   /amcl, /map_server, /controller_server, etc. (if running Nav2)
@@ -217,7 +256,7 @@ export ROS_DOMAIN_ID=42
 
 ### On Desktop PC:
 ```bash
-# Install ROS2 Humble on desktop (if not already)
+# Install ROS2 Jazzy on the desktop PC
 # Set same domain ID
 export ROS_DOMAIN_ID=42
 
@@ -227,7 +266,7 @@ ros2 topic list
 # Launch RViz2
 rviz2 -d path/to/nav2_view.rviz
 
-# Or run teleop from desktop
+# Or run teleop from the desktop
 ros2 run teleop_twist_keyboard teleop_twist_keyboard
 ```
 
@@ -235,11 +274,21 @@ ros2 run teleop_twist_keyboard teleop_twist_keyboard
 
 ---
 
-## Quick Reference — All Commands
+## Quick Reference -- All Commands
 
 ```bash
+# === SOURCE WORKSPACE ===
+source /opt/ros/jazzy/setup.bash
+source ~/robot_ws/install/setup.bash
+
+# === BUILD ===
+cd ~/robot_ws && colcon build --symlink-install && source install/setup.bash
+
 # === BRINGUP ===
 ros2 launch my_bot bringup_hardware.launch.py
+
+# === TELEOP (keyboard driving) ===
+ros2 run teleop_twist_keyboard teleop_twist_keyboard
 
 # === SLAM (mapping) ===
 ros2 launch my_bot slam_hardware.launch.py
@@ -247,13 +296,10 @@ ros2 launch my_bot slam_hardware.launch.py
 # === SAVE MAP ===
 ros2 run nav2_map_server map_saver_cli -f ~/maps/my_map
 
-# === NAV2 (autonomous navigation) ===
+# === NAV2 (autonomous navigation on a saved map) ===
 ros2 launch my_bot navigation_hardware.launch.py map:=$HOME/maps/my_map.yaml
 
-# === TELEOP ===
-ros2 run teleop_twist_keyboard teleop_twist_keyboard
-
-# === RVIZ ===
+# === RVIZ2 ===
 rviz2 -d ~/robot_ws/src/my_bot/config/nav2_view.rviz
 
 # === DEBUG ===
@@ -261,6 +307,7 @@ ros2 topic list
 ros2 topic echo /odom --once
 ros2 topic echo /scan --once
 ros2 topic hz /scan
+ros2 node list
 ros2 run tf2_tools view_frames
 ```
 
@@ -283,23 +330,30 @@ ros2 run tf2_tools view_frames
 
 ### Encoder counts wrong direction
 - In Arduino Serial Monitor, send `r` then manually rotate wheel forward
-- Send `d` to see debug output — ticks should increase for forward rotation
+- Send `d` to see debug output -- ticks should increase for forward rotation
 - If backwards: swap encoder Green/Yellow wires for that motor
+
+### LiDAR not publishing /scan
+1. Check device exists: `ls /dev/rplidar`
+2. Check node is running: `ros2 node list | grep sllidar`
+3. Check permissions: `sudo chmod 666 /dev/rplidar`
+4. Standalone test: `ros2 launch my_bot rplidar.launch.py`
+5. Verify baud rate: RPLidar C1 uses 460800 (default in launch file)
 
 ### SLAM map quality is poor
 - Drive slowly (0.1-0.15 m/s)
 - Make multiple passes through the same area
 - Ensure RPLidar has clear line of sight (no obstructions on the robot)
-- Check `/scan` data in RViz2 — scans should be consistent
+- Check `/scan` data in RViz2 -- scans should be consistent
 
 ### Nav2 goal fails
-- Check map quality — re-map if needed
+- Check map quality -- re-map if needed
 - Ensure initial pose estimate is accurate (2D Pose Estimate in RViz)
 - Check that the goal is in free space on the map
 - Look at terminal output for error messages
 
 ### Encoder ticks_per_rev calibration
-The default `ticks_per_rev=528` assumes a 48:1 gear ratio. To calibrate:
+The default `ticks_per_rev=528` assumes a 48:1 gear ratio with 11 PPR encoders. To calibrate:
 1. Mark the wheel position
 2. In Arduino Serial Monitor: send `r` (reset ticks)
 3. Manually rotate the wheel exactly ONE full revolution

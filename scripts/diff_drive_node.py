@@ -1,34 +1,34 @@
 #!/usr/bin/env python3
 """
-diff_drive_node.py — ROS2 Serial Bridge for Arduino Leonardo Motor Controller
+diff_drive_node.py - ROS2 Serial Bridge for Arduino Leonardo Motor Controller
 
 This node bridges ROS2 and the Arduino Leonardo motor controller on LattePanda Alpha:
-  - Subscribes to /cmd_vel (Twist) → sends PWM commands to Arduino Leonardo
-  - Reads encoder ticks from Arduino → publishes /odom (Odometry) and TF odom→base_link
+  - Subscribes to /cmd_vel (Twist) -> sends PWM commands to Arduino Leonardo
+  - Reads encoder ticks from Arduino -> publishes /odom (Odometry) and TF odom->base_link
   - Publishes /joint_states for wheel joint visualization
 
-Hardware: Daniel's Robot — LattePanda Alpha + built-in Arduino Leonardo
+Hardware: Daniel's Robot - LattePanda Alpha + built-in Arduino Leonardo
   Motors: 130 RPM 12V DC with quadrature encoders (11 PPR)
   Wheels: 69mm diameter (0.0345m radius)
   Wheel separation (center-to-center): 0.181m
-  Gear ratio: ~48:1 → ticks_per_rev ≈ 528
+  Gear ratio: ~48:1 -> ticks_per_rev ~= 528
 
 Differential Drive Kinematics:
-  Forward kinematics (encoders → odometry):
-    v_left  = (delta_left_ticks  / ticks_per_rev) * 2π * wheel_radius / dt
-    v_right = (delta_right_ticks / ticks_per_rev) * 2π * wheel_radius / dt
-    v = (v_right + v_left) / 2
-    ω = (v_right - v_left) / wheel_separation
+  Forward kinematics (encoders -> odometry):
+        v_left  = (delta_left_ticks  / ticks_per_rev) * 2*pi * wheel_radius / dt
+        v_right = (delta_right_ticks / ticks_per_rev) * 2*pi * wheel_radius / dt
+        v = (v_right + v_left) / 2
+        omega = (v_right - v_left) / wheel_separation
 
-  Inverse kinematics (cmd_vel → motor PWM):
-    v_left  = v - ω * wheel_separation / 2
-    v_right = v + ω * wheel_separation / 2
+    Inverse kinematics (cmd_vel -> motor PWM):
+        v_left  = v - omega * wheel_separation / 2
+        v_right = v + omega * wheel_separation / 2
     PWM proportional to velocity (with configurable scaling)
 
 Serial Protocol (USB CDC, 115200 baud):
-  TX to Arduino:  m <left_pwm> <right_pwm>\n
-  RX from Arduino: e <left_ticks> <right_ticks>\n
-"
+    TX to Arduino:  m <left_pwm> <right_pwm>\n
+    RX from Arduino: e <left_ticks> <right_ticks>\n
+"""
 
 import math
 import time
@@ -65,8 +65,8 @@ class DiffDriveNode(Node):
         self.declare_parameter('baud_rate', 115200)
         self.declare_parameter('wheel_separation', 0.181)  # Center-to-center: 181mm
         self.declare_parameter('wheel_radius', 0.0345)     # 69mm wheels
-        self.declare_parameter('ticks_per_rev', 528.0)     # 11 PPR × 48:1 gear (CALIBRATE)
-        self.declare_parameter('max_motor_speed', 0.47)    # ~130 RPM × π × 0.069m
+        self.declare_parameter('ticks_per_rev', 528.0)     # 11 PPR x 48:1 gear (CALIBRATE)
+        self.declare_parameter('max_motor_speed', 0.47)    # ~130 RPM x pi x 0.069m
         self.declare_parameter('odom_frame', 'odom')
         self.declare_parameter('base_frame', 'base_link')
         self.declare_parameter('publish_tf', True)
@@ -289,7 +289,7 @@ class DiffDriveNode(Node):
             self.y -= radius * (math.cos(self.theta + delta_theta) - math.cos(self.theta))
 
         self.theta += delta_theta
-        # Normalize theta to [-π, π]
+        # Normalize theta to [-pi, pi]
         self.theta = math.atan2(math.sin(self.theta), math.cos(self.theta))
 
         # Velocities
@@ -345,7 +345,7 @@ class DiffDriveNode(Node):
         self.joint_pub.publish(js)
 
     def publish_odom_tf(self, stamp):
-        """Broadcast odom → base_link transform."""
+        """Broadcast odom -> base_link transform."""
         t = TransformStamped()
         t.header.stamp = stamp.to_msg()
         t.header.frame_id = self.odom_frame
@@ -360,7 +360,7 @@ class DiffDriveNode(Node):
 
     def destroy_node(self):
         """Clean shutdown: stop motors and close serial."""
-        self.get_logger().info('Shutting down — stopping motors')
+        self.get_logger().info('Shutting down - stopping motors')
         self.send_motor_command(0, 0)
         if self.ser and self.ser.is_open:
             self.ser.close()
