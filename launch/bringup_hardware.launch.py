@@ -23,6 +23,7 @@ Optional arguments:
 import os
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
@@ -46,6 +47,10 @@ def generate_launch_description():
     ticks_per_rev_arg = DeclareLaunchArgument(
         'ticks_per_rev', default_value='528.0',
         description='Encoder ticks per full wheel revolution (11 PPR x 48:1 gear)',
+    )
+    use_rviz_arg = DeclareLaunchArgument(
+        'use_rviz', default_value='true',
+        description='Launch RViz2 with the robot visualization',
     )
 
     # ========================== ROBOT STATE PUBLISHER ==========================
@@ -96,11 +101,27 @@ def generate_launch_description():
         }],
     )
 
+    # ========================== RVIZ2 ==========================
+
+    rviz_config = os.path.join(pkg_path, 'config', 'nav2_view.rviz')
+
+    rviz_node = Node(
+        package='rviz2',
+        executable='rviz2',
+        name='rviz2',
+        output='screen',
+        arguments=['-d', rviz_config],
+        parameters=[{'use_sim_time': False}],
+        condition=IfCondition(LaunchConfiguration('use_rviz')),
+    )
+
     return LaunchDescription([
         lidar_port_arg,
         arduino_port_arg,
         ticks_per_rev_arg,
+        use_rviz_arg,
         rsp,
         lidar_node,
         diff_drive_node,
+        rviz_node,
     ])

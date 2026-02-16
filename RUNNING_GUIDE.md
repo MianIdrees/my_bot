@@ -40,20 +40,23 @@ source install/setup.bash
 
 ## 2. Launch Robot Bringup (ALWAYS run this first)
 
-This starts the core robot systems: URDF/TF, LiDAR, and motor controller.
+This starts the core robot systems: URDF/TF, LiDAR, motor controller, **and RViz2**.
 
 ```bash
-# Terminal 1 — Bringup (keep running)
+# Terminal 1 — Bringup + RViz2 (keep running)
 source ~/Robot_simulation/install/setup.bash
 ros2 launch my_bot bringup_hardware.launch.py
 ```
 
+> **Tip:** To launch without RViz2 (e.g. headless / SSH): `ros2 launch my_bot bringup_hardware.launch.py use_rviz:=false`
+
 **What starts:**
 | Node | Purpose |
-|------|---------|
+|------|---------||
 | `robot_state_publisher` | Publishes URDF and static TF tree |
 | `sllidar_node` | Publishes `/scan` from RPLidar C1 |
 | `diff_drive_node` | Arduino bridge: `/cmd_vel` → motors, encoders → `/odom` + TF `odom→base_link` |
+| `rviz2` | Visualization with pre-configured displays (loaded from `config/nav2_view.rviz`) |
 
 **Verify:**
 ```bash
@@ -100,18 +103,12 @@ When teleop starts, the default speeds are displayed. Use these keys to adjust:
 With bringup running (Step 2):
 
 ```bash
-# Terminal 3 — SLAM (keep running while mapping)
+# Terminal 3 — SLAM + RViz2 (keep running while mapping)
 source ~/Robot_simulation/install/setup.bash
 ros2 launch my_bot slam_hardware.launch.py
 ```
 
-Open RViz2 to visualize the map being built:
-
-```bash
-# Terminal 4 — RViz2
-source ~/Robot_simulation/install/setup.bash
-rviz2 -d ~/Robot_simulation/src/my_bot/config/nav2_view.rviz
-```
+> **Note:** RViz2 opens automatically with the SLAM launch. If you already have RViz2 open from bringup, you can disable it: `ros2 launch my_bot slam_hardware.launch.py use_rviz:=false`
 
 Now drive the robot slowly using teleop (Step 3). Tips for a clean map:
 - **Drive very slowly** (0.10–0.15 m/s linear speed)
@@ -143,18 +140,12 @@ Now stop SLAM: **Ctrl+C** in Terminal 3.
 With bringup still running (Step 2), **stop SLAM first** (Ctrl+C), then:
 
 ```bash
-# Terminal 3 — Nav2 (keep running)
+# Terminal 3 — Nav2 + RViz2 (keep running)
 source ~/Robot_simulation/install/setup.bash
 ros2 launch my_bot navigation_hardware.launch.py map:=$HOME/maps/my_map.yaml
 ```
 
-Open RViz2 if not already running:
-
-```bash
-# Terminal 4 — RViz2
-source ~/Robot_simulation/install/setup.bash
-rviz2 -d ~/Robot_simulation/src/my_bot/config/nav2_view.rviz
-```
+> **Note:** RViz2 opens automatically. To disable: `ros2 launch my_bot navigation_hardware.launch.py map:=$HOME/maps/my_map.yaml use_rviz:=false`
 
 ### Navigate in RViz2:
 1. Click **"2D Pose Estimate"** → click and drag on the map where the robot currently is (sets initial localization)
@@ -214,7 +205,8 @@ source ~/Robot_simulation/install/setup.bash
 cd ~/Robot_simulation && colcon build --symlink-install && source install/setup.bash
 
 # ──────────────────────────────────────────────────────────
-# BRINGUP (Terminal 1 — always run first, keep running)
+# BRINGUP + RVIZ2 (Terminal 1 — always run first, keep running)
+# RViz2 opens automatically; add use_rviz:=false to disable
 # ──────────────────────────────────────────────────────────
 ros2 launch my_bot bringup_hardware.launch.py
 
@@ -227,23 +219,20 @@ ros2 launch my_bot bringup_hardware.launch.py
 ros2 run teleop_twist_keyboard teleop_twist_keyboard
 
 # ──────────────────────────────────────────────────────────
-# SLAM MAPPING (Terminal 3 — build a map while driving)
+# SLAM MAPPING + RVIZ2 (Terminal 3 — build a map while driving)
+# RViz2 opens automatically; add use_rviz:=false to disable
 # ──────────────────────────────────────────────────────────
 ros2 launch my_bot slam_hardware.launch.py
 
 # ──────────────────────────────────────────────────────────
-# RVIZ2 (Terminal 4 — visualize map/navigation)
-# ──────────────────────────────────────────────────────────
-rviz2 -d ~/Robot_simulation/src/my_bot/config/nav2_view.rviz
-
-# ──────────────────────────────────────────────────────────
-# SAVE MAP (Terminal 5 — after mapping is complete)
+# SAVE MAP (Terminal 4 — after mapping is complete)
 # ──────────────────────────────────────────────────────────
 mkdir -p ~/maps
 ros2 run nav2_map_server map_saver_cli -f ~/maps/my_map
 
 # ──────────────────────────────────────────────────────────
-# AUTONOMOUS NAVIGATION (Terminal 3 — after stopping SLAM)
+# AUTONOMOUS NAVIGATION + RVIZ2 (Terminal 3 — after stopping SLAM)
+# RViz2 opens automatically; add use_rviz:=false to disable
 # ──────────────────────────────────────────────────────────
 ros2 launch my_bot navigation_hardware.launch.py map:=$HOME/maps/my_map.yaml
 

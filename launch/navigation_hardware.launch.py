@@ -31,6 +31,7 @@ from launch.actions import (
     SetEnvironmentVariable,
     TimerAction,
 )
+from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node, SetParameter
 from launch_ros.descriptions import ParameterFile
@@ -225,12 +226,33 @@ def generate_launch_description():
         actions=[navigation_nodes],
     )
 
+    # ========================== RVIZ2 ==========================
+
+    declare_use_rviz = DeclareLaunchArgument(
+        'use_rviz', default_value='true',
+        description='Launch RViz2 with navigation visualization',
+    )
+
+    rviz_config = os.path.join(pkg_path, 'config', 'nav2_view.rviz')
+
+    rviz_node = Node(
+        package='rviz2',
+        executable='rviz2',
+        name='rviz2',
+        output='screen',
+        arguments=['-d', rviz_config],
+        parameters=[{'use_sim_time': use_sim_time}],
+        condition=IfCondition(LaunchConfiguration('use_rviz')),
+    )
+
     return LaunchDescription([
         stdout_linebuf,
         declare_use_sim_time,
         declare_autostart,
         declare_params_file,
         declare_map,
+        declare_use_rviz,
         localization_nodes,
         delayed_navigation,
+        rviz_node,
     ])

@@ -19,9 +19,10 @@ from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, EmitEvent, RegisterEventHandler
+from launch.conditions import IfCondition
 from launch.events import matches_action
 from launch.substitutions import LaunchConfiguration
-from launch_ros.actions import LifecycleNode
+from launch_ros.actions import LifecycleNode, Node
 from launch_ros.event_handlers import OnStateTransition
 from launch_ros.events.lifecycle import ChangeState
 import lifecycle_msgs.msg
@@ -71,13 +72,34 @@ def generate_launch_description():
         )
     )
 
+    # ========================== RVIZ2 ==========================
+
+    use_rviz_arg = DeclareLaunchArgument(
+        'use_rviz', default_value='true',
+        description='Launch RViz2 with SLAM visualization',
+    )
+
+    rviz_config = os.path.join(pkg_path, 'config', 'nav2_view.rviz')
+
+    rviz_node = Node(
+        package='rviz2',
+        executable='rviz2',
+        name='rviz2',
+        output='screen',
+        arguments=['-d', rviz_config],
+        parameters=[{'use_sim_time': use_sim_time}],
+        condition=IfCondition(LaunchConfiguration('use_rviz')),
+    )
+
     return LaunchDescription([
         DeclareLaunchArgument(
             'use_sim_time',
             default_value='false',
             description='Use simulation clock (false for real hardware)',
         ),
+        use_rviz_arg,
         slam_toolbox,
         activate_event,
         configure_event,
+        rviz_node,
     ])
