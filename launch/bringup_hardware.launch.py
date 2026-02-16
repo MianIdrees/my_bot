@@ -49,8 +49,8 @@ def generate_launch_description():
         description='Encoder ticks per full wheel revolution (11 PPR x 48:1 gear)',
     )
     use_rviz_arg = DeclareLaunchArgument(
-        'use_rviz', default_value='true',
-        description='Launch RViz2 with the robot visualization',
+        'use_rviz', default_value='false',
+        description='Launch RViz2 with the robot visualization (default false; SLAM/Nav2 launch their own RViz)',
     )
 
     # ========================== ROBOT STATE PUBLISHER ==========================

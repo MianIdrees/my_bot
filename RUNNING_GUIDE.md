@@ -24,7 +24,7 @@ Run this every time you modify any file in `src/my_bot/`:
 
 ```bash
 # Terminal 1 — Build
-cd ~/Robot_simulation
+cd ~/robot_ws
 source /opt/ros/jazzy/setup.bash
 colcon build --symlink-install
 source install/setup.bash
@@ -33,22 +33,22 @@ source install/setup.bash
 > **Tip:** Add to `~/.bashrc` so every new terminal is ready:
 > ```bash
 > echo "source /opt/ros/jazzy/setup.bash" >> ~/.bashrc
-> echo "source ~/Robot_simulation/install/setup.bash" >> ~/.bashrc
+> echo "source ~/robot_ws/install/setup.bash" >> ~/.bashrc
 > ```
 
 ---
 
 ## 2. Launch Robot Bringup (ALWAYS run this first)
 
-This starts the core robot systems: URDF/TF, LiDAR, motor controller, **and RViz2**.
+This starts the core robot systems: URDF/TF, LiDAR, motor controller.
 
 ```bash
-# Terminal 1 — Bringup + RViz2 (keep running)
-source ~/Robot_simulation/install/setup.bash
+# Terminal 1 — Bringup (keep running)
+source ~/robot_ws/install/setup.bash
 ros2 launch my_bot bringup_hardware.launch.py
 ```
 
-> **Tip:** To launch without RViz2 (e.g. headless / SSH): `ros2 launch my_bot bringup_hardware.launch.py use_rviz:=false`
+> **Tip:** RViz2 is launched by SLAM (Step 4) or Nav2 (Step 5) — not by bringup. To launch RViz2 with bringup for debugging: `ros2 launch my_bot bringup_hardware.launch.py use_rviz:=true`
 
 **What starts:**
 | Node | Purpose |
@@ -56,12 +56,11 @@ ros2 launch my_bot bringup_hardware.launch.py
 | `robot_state_publisher` | Publishes URDF and static TF tree |
 | `sllidar_node` | Publishes `/scan` from RPLidar C1 |
 | `diff_drive_node` | Arduino bridge: `/cmd_vel` → motors, encoders → `/odom` + TF `odom→base_link` |
-| `rviz2` | Visualization with pre-configured displays (loaded from `config/nav2_view.rviz`) |
 
 **Verify:**
 ```bash
 # Terminal 2
-source ~/Robot_simulation/install/setup.bash
+source ~/robot_ws/install/setup.bash
 ros2 topic list    # Should show: /scan, /odom, /cmd_vel, /joint_states, /tf, /tf_static
 ros2 node list     # Should show: /robot_state_publisher, /sllidar_node, /diff_drive_node
 ros2 topic hz /scan   # Should show ~10 Hz
@@ -74,7 +73,7 @@ ros2 topic hz /odom   # Should show ~20 Hz
 
 ```bash
 # Terminal 2 — Teleop (keep running while driving)
-source ~/Robot_simulation/install/setup.bash
+source ~/robot_ws/install/setup.bash
 ros2 run teleop_twist_keyboard teleop_twist_keyboard
 ```
 
@@ -104,11 +103,11 @@ With bringup running (Step 2):
 
 ```bash
 # Terminal 3 — SLAM + RViz2 (keep running while mapping)
-source ~/Robot_simulation/install/setup.bash
+source ~/robot_ws/install/setup.bash
 ros2 launch my_bot slam_hardware.launch.py
 ```
 
-> **Note:** RViz2 opens automatically with the SLAM launch. If you already have RViz2 open from bringup, you can disable it: `ros2 launch my_bot slam_hardware.launch.py use_rviz:=false`
+> **Note:** RViz2 opens automatically with the SLAM launch. To disable: `ros2 launch my_bot slam_hardware.launch.py use_rviz:=false`
 
 Now drive the robot slowly using teleop (Step 3). Tips for a clean map:
 - **Drive very slowly** (0.10–0.15 m/s linear speed)
@@ -141,11 +140,11 @@ With bringup still running (Step 2), **stop SLAM first** (Ctrl+C), then:
 
 ```bash
 # Terminal 3 — Nav2 + RViz2 (keep running)
-source ~/Robot_simulation/install/setup.bash
-ros2 launch my_bot navigation_hardware.launch.py map:=$HOME/maps/my_map.yaml
+source ~/robot_ws/install/setup.bash
+ros2 launch my_bot navigation_hardware.launch.py map:=$HOME/robot_ws/my_map_room.yaml
 ```
 
-> **Note:** RViz2 opens automatically. To disable: `ros2 launch my_bot navigation_hardware.launch.py map:=$HOME/maps/my_map.yaml use_rviz:=false`
+> **Note:** RViz2 opens automatically. To disable: `ros2 launch my_bot navigation_hardware.launch.py map:=$HOME/robot_ws/my_map_room.yaml use_rviz:=false`
 
 ### Navigate in RViz2:
 1. Click **"2D Pose Estimate"** → click and drag on the map where the robot currently is (sets initial localization)
@@ -197,16 +196,17 @@ File: `scripts/diff_drive_node.py` and `launch/bringup_hardware.launch.py`
 # SOURCE WORKSPACE (run in every new terminal)
 # ──────────────────────────────────────────────────────────
 source /opt/ros/jazzy/setup.bash
-source ~/Robot_simulation/install/setup.bash
+source ~/robot_ws/install/setup.bash
 
 # ──────────────────────────────────────────────────────────
 # BUILD (after any code/config changes)
 # ──────────────────────────────────────────────────────────
-cd ~/Robot_simulation && colcon build --symlink-install && source install/setup.bash
+cd ~/robot_ws && colcon build --symlink-install && source install/setup.bash
 
 # ──────────────────────────────────────────────────────────
-# BRINGUP + RVIZ2 (Terminal 1 — always run first, keep running)
-# RViz2 opens automatically; add use_rviz:=false to disable
+# BRINGUP (Terminal 1 — always run first, keep running)
+# No RViz by default; SLAM/Nav2 launch their own RViz
+# Add use_rviz:=true to open RViz from bringup
 # ──────────────────────────────────────────────────────────
 ros2 launch my_bot bringup_hardware.launch.py
 
@@ -270,7 +270,7 @@ The default `ticks_per_rev=528` assumes 48:1 gear ratio × 11 PPR. To calibrate:
 3. Manually rotate ONE wheel exactly ONE full revolution
 4. Read the tick count from the `e` messages
 5. Update `ticks_per_rev` in `bringup_hardware.launch.py`
-6. Rebuild: `cd ~/Robot_simulation && colcon build --symlink-install`
+6. Rebuild: `cd ~/robot_ws && colcon build --symlink-install`
 
 ### LiDAR not publishing /scan
 1. Check device: `ls /dev/rplidar`

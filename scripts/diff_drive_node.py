@@ -67,6 +67,7 @@ class DiffDriveNode(Node):
         self.declare_parameter('wheel_radius', 0.0345)     # 69mm wheels
         self.declare_parameter('ticks_per_rev', 528.0)     # 11 PPR x 48:1 gear (CALIBRATE)
         self.declare_parameter('max_motor_speed', 0.47)    # [SPEED] Hardware max: 130 RPM × π × 0.069m ≈ 0.47 m/s
+        self.declare_parameter('min_pwm', 40)                # Minimum PWM to overcome motor stiction + L298N voltage drop
         self.declare_parameter('odom_frame', 'odom')
         self.declare_parameter('base_frame', 'base_link')
         self.declare_parameter('publish_tf', True)
@@ -78,6 +79,7 @@ class DiffDriveNode(Node):
         self.wheel_rad = self.get_parameter('wheel_radius').value
         self.ticks_per_rev = self.get_parameter('ticks_per_rev').value
         self.max_motor_speed = self.get_parameter('max_motor_speed').value
+        self.min_pwm = self.get_parameter('min_pwm').value
         self.odom_frame = self.get_parameter('odom_frame').value
         self.base_frame = self.get_parameter('base_frame').value
         self.publish_tf = self.get_parameter('publish_tf').value
@@ -217,7 +219,9 @@ class DiffDriveNode(Node):
                 if len(parts) == 3:
                     left_ticks = int(parts[1])
                     right_ticks = int(parts[2])
-                    return (left_ticks, right_ticks)
+                    # Negate both encoders: hardware wiring gives inverted sign
+                    # (forward motion produces negative ticks from Arduino)
+                    return (-left_ticks, -right_ticks)
         except (serial.SerialException, ValueError, UnicodeDecodeError) as e:
             self.get_logger().warn(f'Serial read error: {e}')
 

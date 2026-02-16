@@ -79,7 +79,7 @@ def generate_launch_description():
         description='Launch RViz2 with SLAM visualization',
     )
 
-    rviz_config = os.path.join(pkg_path, 'config', 'nav2_view.rviz')
+    rviz_config = os.path.join(pkg_path, 'config', 'slam_view.rviz')
 
     rviz_node = Node(
         package='rviz2',

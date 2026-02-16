@@ -21,8 +21,8 @@
         Center-to-center:      181 mm  (0.181 m)
 
       Drive axle: 147 mm from rear edge
-      Caster:     190 mm forward of drive axle
-      LiDAR:      Near rear edge (x=0.04 in chassis frame), centered laterally
+      Caster:     190 mm forward of drive axle (front of robot)
+      LiDAR:      At the front, above the caster (x≈0.36 in chassis frame), yaw rotated 180°
 
       Coordinate convention:
         base_link at drive axle center, X-forward, Z-up
