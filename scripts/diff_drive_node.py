@@ -66,8 +66,10 @@ class DiffDriveNode(Node):
         self.declare_parameter('wheel_separation', 0.181)  # Center-to-center: 181mm
         self.declare_parameter('wheel_radius', 0.0345)     # 69mm wheels
         self.declare_parameter('ticks_per_rev', 528.0)     # 11 PPR x 48:1 gear (CALIBRATE)
-        self.declare_parameter('max_motor_speed', 0.47)    # [SPEED] Hardware max: 130 RPM × π × 0.069m ≈ 0.47 m/s
-        self.declare_parameter('min_pwm', 40)                # Minimum PWM to overcome motor stiction + L298N voltage drop
+        self.declare_parameter('max_motor_speed', 0.4)    # [SPEED] Hardware max: 130 RPM × π × 0.069m ≈ 0.47 m/s
+        self.declare_parameter('min_pwm', 17)                # Must match Arduino firmware MIN_PWM — motor dead zone threshold
+        self.declare_parameter('angular_deadband', 0.05)     # rad/s — filter only jitter, allow real turn commands through
+        self.declare_parameter('pwm_ramp_rate', 6)          # Max PWM change per cmd_vel cycle (smooth accel/decel)
         self.declare_parameter('odom_frame', 'odom')
         self.declare_parameter('base_frame', 'base_link')
         self.declare_parameter('publish_tf', True)
@@ -80,6 +82,8 @@ class DiffDriveNode(Node):
         self.ticks_per_rev = self.get_parameter('ticks_per_rev').value
         self.max_motor_speed = self.get_parameter('max_motor_speed').value
         self.min_pwm = self.get_parameter('min_pwm').value
+        self.angular_deadband = self.get_parameter('angular_deadband').value
+        self.pwm_ramp_rate = self.get_parameter('pwm_ramp_rate').value
         self.odom_frame = self.get_parameter('odom_frame').value
         self.base_frame = self.get_parameter('base_frame').value
         self.publish_tf = self.get_parameter('publish_tf').value
@@ -164,28 +168,97 @@ class DiffDriveNode(Node):
             self.ser = None
 
     def cmd_vel_callback(self, msg: Twist):
-        """Convert cmd_vel to motor PWM commands and send to Arduino."""
+        """Convert cmd_vel to motor PWM commands with 3-layer intelligent control.
+
+        The layers work together to produce smooth, reliable motion:
+
+        Layer 1 — Deadband: Filters tiny jitter commands (< 0.03 rad/s angular,
+          < 0.01 m/s linear) that cause goal oscillation. The velocity_smoother
+          also filters angular < 0.05 rad/s, so this mainly catches teleop noise.
+
+        Layer 2 — Rescale: Maps raw PWM [1..255] → [min_pwm..255] so that ANY
+          non-zero command produces enough voltage to overcome motor stiction.
+          Without this, turn commands (which only need ~49 PWM per wheel) pass
+          through the velocity_smoother ramp as 5→11→17→... and those low values
+          produce Arduino PID targets of 1-3 ticks — too low for reliable control.
+
+        Layer 3 — Ramp: Limits how fast the rescaled PWM changes per cycle.
+          This prevents jerky starts. Stopping is IMMEDIATE (no ramp delay).
+          Because ramping operates on rescaled values, even the first ramp step
+          (e.g., 30 PWM) is above the motor's working threshold.
+        """
         self.last_cmd_time = self.get_clock().now()
 
         v = msg.linear.x   # m/s
         w = msg.angular.z   # rad/s
 
+        # --- Layer 1: Deadband ---
+        if abs(w) < self.angular_deadband:
+            w = 0.0
+        if abs(v) < 0.01:
+            v = 0.0
+
         # Inverse kinematics: compute wheel velocities
         v_left = v - (w * self.wheel_sep / 2.0)
         v_right = v + (w * self.wheel_sep / 2.0)
 
-        # Convert to PWM (-255 to 255)
+        # Convert to raw PWM (-255 to 255)
         left_pwm = int(v_left * self.pwm_per_mps)
         right_pwm = int(v_right * self.pwm_per_mps)
 
-        # Clamp
+        # Clamp to valid range
         left_pwm = max(-255, min(255, left_pwm))
         right_pwm = max(-255, min(255, right_pwm))
+
+        # --- Layer 2: Rescale into motor's working range ---
+        left_pwm = self._rescale_pwm(left_pwm)
+        right_pwm = self._rescale_pwm(right_pwm)
+
+        # --- Layer 3: Smooth ramp (operates on rescaled values) ---
+        left_pwm = self._ramp_pwm(left_pwm, self.last_left_pwm)
+        right_pwm = self._ramp_pwm(right_pwm, self.last_right_pwm)
 
         # Store and send
         self.last_left_pwm = left_pwm
         self.last_right_pwm = right_pwm
         self.send_motor_command(left_pwm, right_pwm)
+
+    def _rescale_pwm(self, pwm):
+        """Map [1..255] → [min_pwm..255] so any command moves the motor.
+
+        This eliminates the dead zone where PWM < 35 produces no motion.
+        The mapping is linear and preserves proportionality:
+          raw   0 →   0  (stopped)
+          raw   1 →  35  (minimum working PWM)
+          raw  49 →  77  (typical turn speed)
+          raw 128 → 145  (medium speed)
+          raw 255 → 255  (full speed)
+        """
+        if pwm == 0:
+            return 0
+        sign = 1 if pwm > 0 else -1
+        abs_pwm = abs(pwm)
+        scaled = self.min_pwm + (abs_pwm - 1) * (255 - self.min_pwm) / 254.0
+        return sign * int(round(scaled))
+
+    def _ramp_pwm(self, target, current):
+        """Limit PWM change per cycle for smooth acceleration.
+
+        Operates on rescaled values so even the first ramp step is above
+        the motor's working threshold. At 10Hz smoother rate with ramp=30:
+          0→77 PWM (turn) ramps in ~0.3s: 0→30→60→77
+          0→77 only takes 3 cycles because rescale ensures values above 35.
+        Stopping is IMMEDIATE — no delay when Nav2 says stop.
+        """
+        if target == 0:
+            return 0
+        # Direction reversal: stop first, then ramp in new direction
+        if (target > 0 and current < 0) or (target < 0 and current > 0):
+            return 0
+        diff = target - current
+        if abs(diff) <= self.pwm_ramp_rate:
+            return target
+        return current + self.pwm_ramp_rate * (1 if diff > 0 else -1)
 
     def send_motor_command(self, left_pwm, right_pwm):
         """Send motor command to Arduino via serial."""

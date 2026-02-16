@@ -166,19 +166,19 @@ File: `config/nav2_params_hardware.yaml`
 
 | Parameter | Current | Description |
 |-----------|---------|-------------|
-| `FollowPath.desired_linear_vel` | 0.25 m/s | Main forward speed during autonomous navigation |
-| `FollowPath.rotate_to_heading_angular_vel` | 1.0 rad/s | Rotation speed when turning to face goal |
-| `FollowPath.min_approach_linear_velocity` | 0.05 m/s | Minimum speed when approaching goal |
-| `FollowPath.regulated_linear_scaling_min_speed` | 0.1 m/s | Minimum speed during regulated scaling |
-| `FollowPath.max_angular_accel` | 2.0 rad/s² | Maximum angular acceleration |
-| `velocity_smoother.max_velocity` | [0.35, 0.0, 1.5] | Hard speed limits [linear, lateral, angular] |
-| `velocity_smoother.min_velocity` | [-0.3, 0.0, -1.0] | Reverse speed limits |
-| `velocity_smoother.max_accel` | [1.0, 0.0, 2.0] | Acceleration limits |
-| `velocity_smoother.max_decel` | [-1.0, 0.0, -2.0] | Deceleration limits |
-| `velocity_smoother.deadband_velocity` | [0.0, 0.0, 0.0] | Below this = send zero |
-| `behavior_server.max_rotational_vel` | 1.0 rad/s | Max rotation for recovery behaviors |
-| `behavior_server.min_rotational_vel` | 0.3 rad/s | Min rotation for recovery behaviors |
-| `behavior_server.rotational_acc_lim` | 2.0 rad/s² | Rotational acceleration limit |
+| `FollowPath.desired_linear_vel` | 0.20 m/s | Main forward speed during autonomous navigation |
+| `FollowPath.rotate_to_heading_angular_vel` | 0.6 rad/s | Rotation speed when turning to face goal |
+| `FollowPath.min_approach_linear_velocity` | 0.02 m/s | Minimum speed when approaching goal |
+| `FollowPath.regulated_linear_scaling_min_speed` | 0.05 m/s | Minimum speed during regulated scaling |
+| `FollowPath.max_angular_accel` | 1.2 rad/s² | Maximum angular acceleration |
+| `velocity_smoother.max_velocity` | [0.25, 0.0, 0.8] | Hard speed limits [linear, lateral, angular] |
+| `velocity_smoother.min_velocity` | [-0.20, 0.0, -0.8] | Reverse speed limits |
+| `velocity_smoother.max_accel` | [0.8, 0.0, 1.2] | Acceleration limits |
+| `velocity_smoother.max_decel` | [-0.8, 0.0, -1.2] | Deceleration limits |
+| `velocity_smoother.deadband_velocity` | [0.01, 0.0, 0.05] | Below this = send zero (filters noise) |
+| `behavior_server.max_rotational_vel` | 0.5 rad/s | Max rotation for recovery behaviors |
+| `behavior_server.min_rotational_vel` | 0.15 rad/s | Min rotation for recovery behaviors |
+| `behavior_server.rotational_acc_lim` | 1.0 rad/s² | Rotational acceleration limit |
 
 ### Hardware Speed Limit
 File: `scripts/diff_drive_node.py` and `launch/bringup_hardware.launch.py`
