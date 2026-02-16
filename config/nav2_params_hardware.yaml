@@ -109,25 +109,25 @@ controller_server:
 
     FollowPath:
       plugin: "nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController"
-      desired_linear_vel: 0.25        # Conservative for 130 RPM motors
+      desired_linear_vel: 0.25        # [SPEED] Autonomous forward speed in m/s (increase for faster nav, max ~0.35)
       lookahead_dist: 0.5
       min_lookahead_dist: 0.3
       max_lookahead_dist: 0.9
       lookahead_time: 1.5
-      rotate_to_heading_angular_vel: 1.0
+      rotate_to_heading_angular_vel: 1.0  # [SPEED] Rotation speed in rad/s when turning to face goal
       rotate_to_heading_min_angle: 0.5
       transform_tolerance: 0.2
       use_velocity_scaled_lookahead_dist: true
-      min_approach_linear_velocity: 0.05
+      min_approach_linear_velocity: 0.05   # [SPEED] Minimum speed when approaching goal (m/s)
       approach_velocity_scaling_dist: 0.5
       use_collision_detection: true
       max_allowed_time_to_collision_up_to_carrot: 1.0
       use_regulated_linear_velocity_scaling: true
       use_cost_regulated_linear_velocity_scaling: false
       regulated_linear_scaling_min_radius: 0.9
-      regulated_linear_scaling_min_speed: 0.1
+      regulated_linear_scaling_min_speed: 0.1  # [SPEED] Minimum speed during regulated scaling (m/s)
       allow_reversing: false
-      max_angular_accel: 2.0
+      max_angular_accel: 2.0               # [SPEED] Max angular acceleration in rad/s²
       max_robot_pose_search_dist: 10.0
 
 planner_server:
@@ -176,9 +176,9 @@ behavior_server:
     robot_base_frame: base_link
     transform_tolerance: 0.2
     simulate_ahead_time: 2.0
-    max_rotational_vel: 1.0          # Conservative
-    min_rotational_vel: 0.3
-    rotational_acc_lim: 2.0
+    max_rotational_vel: 1.0          # [SPEED] Max rotation speed for recovery behaviors (rad/s)
+    min_rotational_vel: 0.3            # [SPEED] Min rotation speed for recovery behaviors (rad/s)
+    rotational_acc_lim: 2.0            # [SPEED] Rotational acceleration limit (rad/s²)
 
 waypoint_follower:
   ros__parameters:
@@ -198,13 +198,13 @@ velocity_smoother:
     smoothing_frequency: 10.0
     scale_velocities: false
     feedback: "OPEN_LOOP"
-    max_velocity: [0.35, 0.0, 1.5]     # Daniel's robot: 130 RPM motors
-    min_velocity: [-0.3, 0.0, -1.0]
-    max_accel: [1.0, 0.0, 2.0]
-    max_decel: [-1.0, 0.0, -2.0]
+    max_velocity: [0.35, 0.0, 1.5]     # [SPEED] Max [linear_x m/s, linear_y m/s, angular_z rad/s] — hardware limit ~0.47 m/s
+    min_velocity: [-0.3, 0.0, -1.0]    # [SPEED] Min (negative = reverse) [linear_x, linear_y, angular_z]
+    max_accel: [1.0, 0.0, 2.0]         # [SPEED] Max acceleration [linear m/s², 0, angular rad/s²]
+    max_decel: [-1.0, 0.0, -2.0]       # [SPEED] Max deceleration (negative values)
     odom_topic: "odom"
     odom_duration: 0.1
-    deadband_velocity: [0.0, 0.0, 0.0]
+    deadband_velocity: [0.0, 0.0, 0.0] # [SPEED] Minimum velocity to send (below this = zero)
     velocity_timeout: 1.0
 
 local_costmap:

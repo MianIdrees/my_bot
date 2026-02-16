@@ -66,7 +66,7 @@ class DiffDriveNode(Node):
         self.declare_parameter('wheel_separation', 0.181)  # Center-to-center: 181mm
         self.declare_parameter('wheel_radius', 0.0345)     # 69mm wheels
         self.declare_parameter('ticks_per_rev', 528.0)     # 11 PPR x 48:1 gear (CALIBRATE)
-        self.declare_parameter('max_motor_speed', 0.47)    # ~130 RPM x pi x 0.069m
+        self.declare_parameter('max_motor_speed', 0.47)    # [SPEED] Hardware max: 130 RPM × π × 0.069m ≈ 0.47 m/s
         self.declare_parameter('odom_frame', 'odom')
         self.declare_parameter('base_frame', 'base_link')
         self.declare_parameter('publish_tf', True)
@@ -319,18 +319,21 @@ class DiffDriveNode(Node):
         odom.pose.pose.position.z = 0.0
         odom.pose.pose.orientation = quaternion_from_yaw(self.theta)
 
-        # Pose covariance (simple diagonal)
-        odom.pose.covariance[0] = 0.01   # x
-        odom.pose.covariance[7] = 0.01   # y
-        odom.pose.covariance[35] = 0.03  # yaw
+        # Pose covariance (diagonal) — higher values tell SLAM/AMCL that odometry
+        # is less reliable, so scan matching is trusted more (reduces map drift)
+        # [TUNING] Increase these if map still drifts; decrease if map is jittery
+        odom.pose.covariance[0] = 0.05   # x position variance (meters²)
+        odom.pose.covariance[7] = 0.05   # y position variance (meters²)
+        odom.pose.covariance[35] = 0.1   # yaw orientation variance (radians²)
 
         # Twist
         odom.twist.twist.linear.x = self.v_linear
         odom.twist.twist.angular.z = self.v_angular
 
-        # Twist covariance
-        odom.twist.covariance[0] = 0.01
-        odom.twist.covariance[35] = 0.03
+        # Twist covariance — how noisy the velocity estimates are
+        # [TUNING] Increase if velocity estimates are inaccurate
+        odom.twist.covariance[0] = 0.05  # linear velocity variance
+        odom.twist.covariance[35] = 0.1  # angular velocity variance
 
         self.odom_pub.publish(odom)
 
